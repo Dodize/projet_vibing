@@ -21,7 +21,8 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
 lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
-navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
+osmdroidAndroid = { group = "org.osmdroid", name = "osmdroid-android", version = "6.1.19" }
+osmdroidMapsforge = { group = "org.osmdroid", name = "osmdroid-mapsforge", version = "6.1.19" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
