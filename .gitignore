@@ -24,3 +24,7 @@ hs_err_pid*
 replay_pid*
 opencode.json
 prompt_cdc.txt
+
+# custom
+node_modules/*
+.gradle/*

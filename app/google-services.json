@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "408915883264",
+    "project_id": "vibingn7",
+    "storage_bucket": "vibingn7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:408915883264:android:fcf7ecabc68d16a9eeefe5",
+        "android_client_info": {
+          "package_name": "com.example.vibing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaJ75OLT7wsAOEZW8C-L01tMZQvqL9OCM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
