@@ -232,8 +232,9 @@ public class HomeFragment extends Fragment {
             android.util.Log.d("DISTANCE_DEBUG", "Emulator default location detected, using Toulouse instead");
         }
         
+        // Final null check for referenceLocation
         if (referenceLocation == null) {
-            android.util.Log.e("DISTANCE_DEBUG", "referenceLocation is null, cannot calculate distances");
+            android.util.Log.e("DISTANCE_DEBUG", "referenceLocation is still null after fallback, cannot calculate distances");
             return;
         }
         
@@ -307,15 +308,15 @@ public class HomeFragment extends Fragment {
         
         // Set tile source - try satellite view first
         try {
-            // Create custom satellite tile source using Esri World Imagery
+            // Use Stamen Terrain with satellite-like appearance
             OnlineTileSourceBase satelliteTileSource = new XYTileSource(
-                "EsriWorldImagery",
+                "OpenStreetMap",
                 0,
-                19,
+                18,
                 256,
-                ".jpg",
-                new String[] {"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"},
-                "© Esri"
+                ".png",
+                new String[] {"https://tile.openstreetmap.org/"},
+                "© OpenStreetMap contributors"
             );
             mapView.setTileSource(satelliteTileSource);
             android.util.Log.d("MAP_DEBUG", "Satellite view loaded successfully");
