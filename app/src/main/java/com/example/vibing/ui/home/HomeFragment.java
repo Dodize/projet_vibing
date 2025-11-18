@@ -10,6 +10,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -32,6 +37,9 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Marker.OnMarkerClickListener;
+import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.infowindow.InfoWindow;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
@@ -40,7 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
     private FragmentHomeBinding binding;
     private MapView mapView;
@@ -53,6 +61,8 @@ public class HomeFragment extends Fragment {
     private List<PoiItem> poiList;
     private GeoPoint currentUserLocation;
     private Random random = new Random();
+    private TextView currentInfoBubble;
+    private Marker currentSelectedMarker;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -164,7 +174,11 @@ public class HomeFragment extends Fragment {
             poiMarker.setTitle(poi.name);
             poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
             poiMarker.setIcon(getTeamIcon(poi.owningTeam));
-            poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+            poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+            poiMarker.setOnMarkerClickListener(this);
+            // Increase touch area for easier interaction on mobile
+            poiMarker.setInfoWindow(null); // Disable default info window
+            poiMarker.setPanToView(false); // Don't auto-pan on click
             
             poi.marker = poiMarker;
             mapView.getOverlays().add(poiMarker);
@@ -210,11 +224,14 @@ public class HomeFragment extends Fragment {
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId) {
-        // Create a simple colored circle drawable for team markers
+        // Create a larger colored circle drawable for team markers
         android.graphics.drawable.ShapeDrawable shape = new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape());
         shape.getPaint().setColor(getTeamColor(teamId));
-        shape.setIntrinsicWidth(20);
-        shape.setIntrinsicHeight(20);
+        shape.getPaint().setStrokeWidth(2); // Add border
+        shape.getPaint().setStyle(android.graphics.Paint.Style.FILL_AND_STROKE);
+        shape.getPaint().setAntiAlias(true);
+        shape.setIntrinsicWidth(40); // Increased size for better touch target
+        shape.setIntrinsicHeight(40);
         return shape;
     }
     
@@ -305,6 +322,30 @@ public class HomeFragment extends Fragment {
         // Enable zoom controls and multi-touch
         mapView.setBuiltInZoomControls(true);
         mapView.setMultiTouchControls(true);
+        
+        // Setup info bubble container
+        setupInfoBubble();
+        
+        // Add map click listener to hide info bubble when clicking elsewhere
+        mapView.setMapListener(new org.osmdroid.events.MapListener() {
+            @Override
+            public boolean onScroll(org.osmdroid.events.ScrollEvent event) {
+                // Update bubble position when map is scrolled
+                if (currentSelectedMarker != null) {
+                    updateInfoBubblePosition(currentSelectedMarker);
+                }
+                return false;
+            }
+            
+            @Override
+            public boolean onZoom(org.osmdroid.events.ZoomEvent event) {
+                // Update bubble position when map is zoomed
+                if (currentSelectedMarker != null) {
+                    updateInfoBubblePosition(currentSelectedMarker);
+                }
+                return false;
+            }
+        });
         
         // Set tile source - try satellite view first
         try {
@@ -530,6 +571,129 @@ public class HomeFragment extends Fragment {
         if (mapView != null) {
             mapView.onDetach(); // Detach map resources
         }
+        // Clean up info bubble
+        if (currentInfoBubble != null && currentInfoBubble.getParent() != null) {
+            ((ViewGroup) currentInfoBubble.getParent()).removeView(currentInfoBubble);
+        }
         binding = null;
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker, MapView mapView) {
+        // Find the POI associated with this marker
+        for (PoiItem poi : poiList) {
+            if (poi.marker == marker) {
+                // Hide previous bubble if different marker
+                if (currentSelectedMarker != null && currentSelectedMarker != marker) {
+                    hideInfoBubble();
+                }
+                
+                // Show info bubble for this marker
+                showInfoBubble(marker, poi);
+                
+                // Add visual feedback - briefly enlarge the marker
+                android.graphics.drawable.Drawable originalIcon = marker.getIcon();
+                android.graphics.drawable.Drawable enlargedIcon = getTeamIcon(poi.owningTeam);
+                enlargedIcon.setBounds(-25, -25, 25, 25);
+                marker.setIcon(enlargedIcon);
+                mapView.invalidate();
+                
+                // Reset icon after a short delay
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    marker.setIcon(originalIcon);
+                    mapView.invalidate();
+                }, 200);
+                
+                return true; // Event handled
+            }
+        }
+        return false; // Event not handled
+    }
+
+    private void setupInfoBubble() {
+        // Create a custom info bubble that will be added to the map's parent layout
+        ViewGroup mapContainer = (ViewGroup) binding.mapView.getParent();
+        
+        currentInfoBubble = new TextView(getContext());
+        currentInfoBubble.setVisibility(View.GONE);
+        currentInfoBubble.setPadding(20, 12, 20, 12);
+        currentInfoBubble.setTextSize(14);
+        currentInfoBubble.setTextColor(Color.WHITE);
+        currentInfoBubble.setGravity(Gravity.CENTER);
+        
+        // Create background drawable with rounded corners
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.RECTANGLE);
+        background.setColor(Color.parseColor("#CC000000")); // Semi-transparent black
+        background.setCornerRadius(12);
+        background.setStroke(2, Color.WHITE);
+        currentInfoBubble.setBackground(background);
+        
+        // Add to map container with proper layout params for any parent type
+        ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        mapContainer.addView(currentInfoBubble, params);
+    }
+
+    private void showInfoBubble(Marker marker, PoiItem poi) {
+        if (currentInfoBubble == null || poi == null) return;
+        
+        // Create info text
+        String distanceText = String.format("%.1f km", poi.distance);
+        String infoText = poi.name + "\n" +
+                         "Distance: " + distanceText + "\n" +
+                         "Score: " + poi.score + " | " + getTeamName(poi.owningTeam);
+        
+        currentInfoBubble.setText(infoText);
+        currentInfoBubble.setVisibility(View.VISIBLE);
+        
+        // Position the bubble above the marker
+        updateInfoBubblePosition(marker);
+        
+        currentSelectedMarker = marker;
+    }
+
+    private void updateInfoBubblePosition(Marker marker) {
+        if (currentInfoBubble == null || marker == null) return;
+        
+        // Get marker position on screen
+        GeoPoint markerPos = marker.getPosition();
+        org.osmdroid.views.Projection projection = mapView.getProjection();
+        android.graphics.Point screenPoint = new android.graphics.Point();
+        projection.toPixels(markerPos, screenPoint);
+        
+        // Position bubble above marker
+        int bubbleWidth = currentInfoBubble.getWidth();
+        int bubbleHeight = currentInfoBubble.getHeight();
+        
+        if (bubbleWidth == 0) {
+            // Measure the view first if not laid out yet
+            currentInfoBubble.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            bubbleWidth = currentInfoBubble.getMeasuredWidth();
+            bubbleHeight = currentInfoBubble.getMeasuredHeight();
+        }
+        
+        int x = screenPoint.x - bubbleWidth / 2;
+        int y = screenPoint.y - bubbleHeight - 50; // 50px above marker
+        
+        // Ensure bubble stays within screen bounds
+        x = Math.max(10, Math.min(x, mapView.getWidth() - bubbleWidth - 10));
+        y = Math.max(10, y);
+        
+        // Position the bubble using translation instead of layout params
+        currentInfoBubble.setTranslationX(x);
+        currentInfoBubble.setTranslationY(y);
+    }
+
+    private void hideInfoBubble() {
+        if (currentInfoBubble != null) {
+            currentInfoBubble.setVisibility(View.GONE);
+        }
+        currentSelectedMarker = null;
     }
 }
