@@ -32,6 +32,9 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
+import org.osmdroid.tileprovider.tilesource.XYTileSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -229,9 +232,19 @@ public class HomeFragment extends Fragment {
             android.util.Log.d("DISTANCE_DEBUG", "Emulator default location detected, using Toulouse instead");
         }
         
+        if (referenceLocation == null) {
+            android.util.Log.e("DISTANCE_DEBUG", "referenceLocation is null, cannot calculate distances");
+            return;
+        }
+        
         android.util.Log.d("DISTANCE_DEBUG", "Reference location: " + referenceLocation.getLatitude() + "," + referenceLocation.getLongitude());
         
         // Calculate distances from reference location
+        if (poiList == null) {
+            android.util.Log.e("DISTANCE_DEBUG", "poiList is null, cannot calculate distances");
+            return;
+        }
+        
         for (PoiItem poi : poiList) {
             GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
             
@@ -292,8 +305,29 @@ public class HomeFragment extends Fragment {
         mapView.setBuiltInZoomControls(true);
         mapView.setMultiTouchControls(true);
         
-        // Set tile source
-        mapView.setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK);
+        // Set tile source - try satellite view first
+        try {
+            // Create custom satellite tile source using Esri World Imagery
+            OnlineTileSourceBase satelliteTileSource = new XYTileSource(
+                "EsriWorldImagery",
+                0,
+                19,
+                256,
+                ".jpg",
+                new String[] {"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"},
+                "© Esri"
+            );
+            mapView.setTileSource(satelliteTileSource);
+            android.util.Log.d("MAP_DEBUG", "Satellite view loaded successfully");
+        } catch (Exception e) {
+            android.util.Log.d("MAP_DEBUG", "Satellite view failed, trying MAPNIK: " + e.getMessage());
+            try {
+                mapView.setTileSource(TileSourceFactory.MAPNIK);
+                android.util.Log.d("MAP_DEBUG", "MAPNIK loaded as fallback");
+            } catch (Exception e2) {
+                android.util.Log.d("MAP_DEBUG", "MAPNIK also failed: " + e2.getMessage());
+            }
+        }
         
         // Initialize Location Client
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
@@ -347,11 +381,11 @@ public class HomeFragment extends Fragment {
         poiRecyclerView = binding.poiListRecyclerView;
         poiRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         
-        // 3. Check Permissions and Start Location Logic
-        checkLocationPermissions();
-        
-        // 4. Initialize POIs on the map
+        // 3. Initialize POIs on the map first
         initializePOIs();
+        
+        // 4. Check Permissions and Start Location Logic
+        checkLocationPermissions();
         
         // Center map on user location if available, otherwise Toulouse as fallback
         if (currentUserLocation != null) {
