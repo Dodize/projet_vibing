@@ -151,8 +151,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Convert Firebase POIs to local PoiItems
                 for (Poi poi : pois) {
-                    android.util.Log.d("HomeFragment", "Converting POI: " + poi.getName() + 
-                        " at (" + poi.getLatitude() + ", " + poi.getLongitude() + ")");
                     PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
                     poiList.add(poiItem);
                 }
@@ -243,25 +241,19 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Use user's real location if available, otherwise fallback to Toulouse
         if (referenceLocation == null) {
             referenceLocation = new GeoPoint(43.6047, 1.4442); // Toulouse Capitole fallback
-            android.util.Log.d("DISTANCE_DEBUG", "No user location available, using Toulouse fallback");
         } else if (isEmulatorDefaultLocation(referenceLocation)) {
             // If we have emulator default location, use Toulouse instead
             referenceLocation = new GeoPoint(43.6047, 1.4442);
             currentUserLocation = referenceLocation; // Update to avoid repeated checks
-            android.util.Log.d("DISTANCE_DEBUG", "Emulator default location detected, using Toulouse instead");
         }
         
         // Final null check for referenceLocation
         if (referenceLocation == null) {
-            android.util.Log.e("DISTANCE_DEBUG", "referenceLocation is still null after fallback, cannot calculate distances");
             return;
         }
         
-        android.util.Log.d("DISTANCE_DEBUG", "Reference location: " + referenceLocation.getLatitude() + "," + referenceLocation.getLongitude());
-        
         // Calculate distances from reference location
         if (poiList == null) {
-            android.util.Log.e("DISTANCE_DEBUG", "poiList is null, cannot calculate distances");
             return;
         }
         
@@ -283,12 +275,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             double distanceInMeters = 6371000 * c; // Earth radius in meters
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
-            
-            // Debug log
-            android.util.Log.d("DISTANCE_DEBUG", poi.name + ":");
-            android.util.Log.d("DISTANCE_DEBUG", "  From: " + referenceLocation.getLatitude() + "," + referenceLocation.getLongitude());
-            android.util.Log.d("DISTANCE_DEBUG", "  To: " + poi.latitude + "," + poi.longitude);
-            android.util.Log.d("DISTANCE_DEBUG", "  Distance: " + distanceInMeters + "m (" + poi.distance + " km)");
         }
         
         // Sort by distance
@@ -361,14 +347,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 "© OpenStreetMap contributors"
             );
             mapView.setTileSource(satelliteTileSource);
-            android.util.Log.d("MAP_DEBUG", "Satellite view loaded successfully");
         } catch (Exception e) {
-            android.util.Log.d("MAP_DEBUG", "Satellite view failed, trying MAPNIK: " + e.getMessage());
             try {
                 mapView.setTileSource(TileSourceFactory.MAPNIK);
-                android.util.Log.d("MAP_DEBUG", "MAPNIK loaded as fallback");
             } catch (Exception e2) {
-                android.util.Log.d("MAP_DEBUG", "MAPNIK also failed: " + e2.getMessage());
+                // Silent fallback
             }
         }
         
@@ -391,10 +374,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     
                     // Check if this is emulator default location
                     if (isEmulatorDefaultLocation(newLocation)) {
-                        android.util.Log.d("LOCATION_DEBUG", "Emulator default location received, using Toulouse instead");
                         newLocation = new GeoPoint(43.6047, 1.4442);
-                    } else {
-                        android.util.Log.d("LOCATION_DEBUG", "Real user location received: " + newLocation.getLatitude() + "," + newLocation.getLongitude());
                     }
                     
                     currentUserLocation = newLocation;
@@ -477,7 +457,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     mapView.getController().setZoom(13.0);
                     userMarker.setVisible(false); // Hide marker if we can't get location
                     updatePoiDistancesAndList(); // Update distances with fallback location
-                    android.util.Log.d("LOCATION_DEBUG", "Location permission denied, using Toulouse fallback");
                 }
             }
         }
@@ -497,8 +476,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     locationCallback,
                     Looper.getMainLooper());
             
-            android.util.Log.d("LOCATION_DEBUG", "Started requesting fresh location updates");
-            
             // Request an initial location update immediately if possible
             fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
                 if (location != null && userMarker != null) {
@@ -506,10 +483,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     
                     // Check if this is emulator default location
                     if (isEmulatorDefaultLocation(initialLocation)) {
-                        android.util.Log.d("LOCATION_DEBUG", "Emulator default location in getLastLocation, using Toulouse instead");
                         initialLocation = new GeoPoint(43.6047, 1.4442);
-                    } else {
-                        android.util.Log.d("LOCATION_DEBUG", "Initial user location: " + initialLocation.getLatitude() + "," + initialLocation.getLongitude());
                     }
                     
                     currentUserLocation = initialLocation;
@@ -530,7 +504,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     userMarker.setPosition(fallbackLocation);
                     userMarker.setVisible(true);
                     updatePoiDistancesAndList(); // Update distances with fallback location
-                    android.util.Log.d("LOCATION_DEBUG", "No last known location, using Toulouse fallback");
                 }
             });
         }
@@ -697,4 +670,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
         currentSelectedMarker = null;
     }
+    
+
 }

@@ -77,25 +77,20 @@ public class TeamsFragment extends Fragment {
         try {
             com.google.firebase.FirebaseApp app = com.google.firebase.FirebaseApp.getInstance();
             Toast.makeText(getContext(), "FirebaseApp initialized: " + app.getName(), Toast.LENGTH_SHORT).show();
-            android.util.Log.d("FirebaseTest", "FirebaseApp: " + app.toString());
         } catch (Exception e) {
             Toast.makeText(getContext(), "FirebaseApp NOT initialized", Toast.LENGTH_LONG).show();
-            android.util.Log.e("FirebaseTest", "FirebaseApp error", e);
             return;
         }
         
         // Test 2: Vérifier Firestore
         try {
-            android.util.Log.d("FirebaseTest", "About to get Firestore instance");
             db = FirebaseFirestore.getInstance();
             Toast.makeText(getContext(), "Firestore instance created", Toast.LENGTH_SHORT).show();
-            android.util.Log.d("FirebaseTest", "Firestore: " + db.toString());
             
             // Load teams from Firebase
             loadTeamsFromFirebase();
         } catch (Exception e) {
             Toast.makeText(getContext(), "Firestore error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            android.util.Log.e("FirebaseTest", "Firestore error", e);
         }
     }
     
@@ -115,7 +110,6 @@ public class TeamsFragment extends Fragment {
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(getContext(), "Error loading teams: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    android.util.Log.e("FirebaseTest", "Error loading teams", e);
                 });
     }
 }

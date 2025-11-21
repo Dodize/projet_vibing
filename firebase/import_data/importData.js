@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase/vibingn7-firebase-adminsdk-fbsvc-ad7d4a5efd.json'); // IMPORTANT: Replace with your actual path
+const serviceAccount = require('../vibingn7-882705adcdad.json'); // IMPORTANT: Replace with your actual path
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {

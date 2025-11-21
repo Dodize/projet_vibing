@@ -18,17 +18,12 @@ public class HomeViewModel extends ViewModel {
     private FirebaseFirestore db;
 
     public HomeViewModel() {
-        android.util.Log.d("HomeViewModel", "HomeViewModel constructor start");
         pois = new MutableLiveData<>();
-        android.util.Log.d("HomeViewModel", "LiveData created");
         
         try {
             db = FirebaseFirestore.getInstance();
-            android.util.Log.d("HomeViewModel", "Firebase instance created");
             loadPois();
-            android.util.Log.d("HomeViewModel", "loadPois called");
         } catch (Exception e) {
-            android.util.Log.e("HomeViewModel", "Error in constructor: " + e.getMessage(), e);
             loadTestPois();
         }
     }
@@ -42,39 +37,25 @@ public class HomeViewModel extends ViewModel {
             db.collection("pois")
                     .get()
                     .addOnSuccessListener(queryDocumentSnapshots -> {
-                        android.util.Log.d("HomeViewModel", "POIs loaded successfully. Count: " + queryDocumentSnapshots.size());
                         List<Poi> poiList = new ArrayList<>();
                         for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                            // Log raw data first
-                            android.util.Log.d("HomeViewModel", "Raw POI data: " + document.getData().toString());
-                            
                             // Create POI manually from document data
                             Poi poi = createPoiFromDocument(document);
-                            
-                            // Debug log for each POI with all details
-                            android.util.Log.d("HomeViewModel", "POI: " + poi.getName() + 
-                                " at (" + poi.getLatitude() + ", " + poi.getLongitude() + ")" +
-                                " score: " + poi.getScore() + 
-                                " team: " + poi.getOwningTeam());
-                                
                             poiList.add(poi);
                         }
                         pois.setValue(poiList);
                     })
                     .addOnFailureListener(e -> {
-                        android.util.Log.e("HomeViewModel", "Error loading POIs: " + e.getMessage(), e);
                         // Fallback to test data
                         loadTestPois();
                     });
         } catch (Exception e) {
-            android.util.Log.e("HomeViewModel", "Firebase initialization error: " + e.getMessage(), e);
             // Fallback to test data
             loadTestPois();
         }
     }
     
     private void loadTestPois() {
-        android.util.Log.d("HomeViewModel", "Loading test POIs data...");
         List<Poi> testPois = new ArrayList<>();
         
         // Add some test POIs with correct Toulouse coordinates
@@ -115,7 +96,6 @@ public class HomeViewModel extends ViewModel {
         testPois.add(pontNeuf);
         
         pois.setValue(testPois);
-        android.util.Log.d("HomeViewModel", "Test POIs loaded: " + testPois.size() + " items");
     }
     
     private Poi createPoiFromDocument(QueryDocumentSnapshot document) {
@@ -165,23 +145,48 @@ public class HomeViewModel extends ViewModel {
         }
         
         // Extract owning team
+        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' raw data: " + data.toString());
+        
         if (data.containsKey("ownerTeamId")) {
             String teamId = (String) data.get("ownerTeamId");
+            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' ownerTeamId: " + teamId);
             if (teamId != null && !teamId.equals("null") && !teamId.isEmpty()) {
                 try {
-                    poi.setOwningTeam(Integer.parseInt(teamId));
+                    // Extract number from "team_X" format
+                    if (teamId.startsWith("team_")) {
+                        String teamNumber = teamId.substring(5); // Remove "team_" prefix
+                        int teamIdInt = Integer.parseInt(teamNumber);
+                        poi.setOwningTeam(teamIdInt);
+                        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' extracted team number: " + teamIdInt);
+                    } else {
+                        // Try direct parsing as fallback
+                        int teamIdInt = Integer.parseInt(teamId);
+                        poi.setOwningTeam(teamIdInt);
+                        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' parsed team ID directly: " + teamIdInt);
+                    }
                 } catch (NumberFormatException e) {
                     poi.setOwningTeam(0); // neutral
+                    android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' failed to parse team ID, setting to neutral");
                 }
             } else {
                 poi.setOwningTeam(0); // neutral
+                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' ownerTeamId is null/empty, setting to neutral");
             }
         } else if (data.containsKey("owningTeam")) {
             Object team = data.get("owningTeam");
+            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam field: " + team);
             if (team instanceof Number) {
-                poi.setOwningTeam(((Number) team).intValue());
+                int teamId = ((Number) team).intValue();
+                poi.setOwningTeam(teamId);
+                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam number: " + teamId);
+            } else {
+                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam is not a number: " + team);
             }
+        } else {
+            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has no team field, setting to neutral");
         }
+        
+        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' final owning team: " + poi.getOwningTeam());
         
         return poi;
     }

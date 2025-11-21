@@ -17,17 +17,13 @@ public class TeamsViewModel extends ViewModel {
     private FirebaseFirestore db;
 
     public TeamsViewModel() {
-        android.util.Log.d("TeamsViewModel", "TeamsViewModel constructor start");
         teams = new MutableLiveData<>();
-        android.util.Log.d("TeamsViewModel", "LiveData created");
         
         try {
             db = FirebaseFirestore.getInstance();
-            android.util.Log.d("TeamsViewModel", "Firebase instance created");
             loadTeams();
-            android.util.Log.d("TeamsViewModel", "loadTeams called");
         } catch (Exception e) {
-            android.util.Log.e("TeamsViewModel", "Error in constructor: " + e.getMessage(), e);
+            // Handle exception silently
         }
     }
 

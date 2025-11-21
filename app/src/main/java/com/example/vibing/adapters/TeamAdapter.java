@@ -26,20 +26,17 @@ public class TeamAdapter extends RecyclerView.Adapter<TeamAdapter.TeamViewHolder
     public TeamAdapter(List<Team> teamList, OnTeamClickListener listener) {
         this.teamList = teamList;
         this.listener = listener;
-        android.util.Log.d("TeamAdapter", "TeamAdapter created with " + teamList.size() + " teams");
     }
 
     @NonNull
     @Override
     public TeamViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        android.util.Log.d("TeamAdapter", "onCreateViewHolder called");
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_team, parent, false);
         return new TeamViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull TeamViewHolder holder, int position) {
-        android.util.Log.d("TeamAdapter", "onBindViewHolder called for position " + position);
         Team team = teamList.get(position);
         holder.textViewTeamName.setText(team.getName());
         
@@ -50,7 +47,6 @@ public class TeamAdapter extends RecyclerView.Adapter<TeamAdapter.TeamViewHolder
         }
         
         holder.itemView.setOnClickListener(v -> {
-            android.util.Log.d("TeamAdapter", "Team clicked: " + team.getName());
             if (listener != null) {
                 listener.onTeamClick(team);
             }

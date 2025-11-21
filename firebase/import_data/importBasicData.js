@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase/vibingn7-firebase-adminsdk-fbsvc-ad7d4a5efd.json');
+const serviceAccount = require('../vibingn7-882705adcdad.json');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
