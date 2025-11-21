@@ -1,42 +1,85 @@
 # Rapport de Schéma de Base de Données Firestore
 
-Ce document décrit la structure de la base de données Firestore telle que déduite et utilisée pour la fonctionnalité de sélection d'équipe dans l'application.
+Ce document décrit la structure complète de la base de données Firestore utilisée par l'application Vibing.
 
 ## 1. Collection : `teams` (Liste des Équipes Disponibles)
 
-Cette collection est supposée contenir toutes les équipes disponibles pour la sélection.
+Cette collection contient toutes les équipes disponibles pour la sélection dans le jeu.
 
-| Champ | Type | Description | Pertinence |
+| Champ | Type | Description | Valeur Exemple |
 | :--- | :--- | :--- | :--- |
-| **Document ID** | String | Identifiant unique de l'équipe (ex: "RED"). | Utilisé comme clé principale. |
-| `teamId` | String | Identifiant textuel de l'équipe (redondant avec l'ID du document, mais conservé pour la cohérence des données). | Clé de référence. |
-| `name` | String | Nom complet de l'équipe à afficher dans l'interface utilisateur. | Affichage dynamique. |
-| `colorHex` | String | Code couleur hexadécimal associé à l'équipe. | Utilisé pour le style futur. |
+| **Document ID** | String | Identifiant unique de l'équipe | "team_1" |
+| `teamId` | String | Identifiant textuel de l'équipe | "team_1" |
+| `name` | String | Nom complet de l'équipe | "Les Conquérants" |
+| `colorHex` | String | Code couleur hexadécimal | "#FF0000" |
 
-**Note :** Actuellement, le chargement des données dans `TeamSelectionFragment` est simulé. Une requête Firestore réelle devrait être implémentée pour lire cette collection.
+**Équipes disponibles :**
+- team_1: Les Conquérants (Rouge #FF0000)
+- team_2: Les Explorateurs (Bleu #0000FF)  
+- team_3: Les Stratèges (Vert #00FF00)
+- team_4: Les Gardiens (Orange #FFA500)
+- team_5: Les Innovateurs (Violet #800080)
 
 ## 2. Collection : `users`
 
 Cette collection stocke les données spécifiques à chaque utilisateur, indexées par leur UID Firebase.
 
-| Champ | Type | Description | Pertinence |
+| Champ | Type | Description | Valeur Exemple |
 | :--- | :--- | :--- | :--- |
-| **Document ID** | String | UID de l'utilisateur Firebase. | Clé primaire de l'utilisateur. |
-| `teamId` | String | L'ID de l'équipe sélectionnée par cet utilisateur (ex: "RED"). | Lien vers la collection `teams`. |
-| `currency` | Number | Monnaie de l'utilisateur (initialisé à 100). | Donnée utilisateur. |
-| `distanceWalked` | Long | Distance totale parcourue par l'utilisateur (initialisé à 0). | Donnée utilisateur. |
+| **Document ID** | String | UID de l'utilisateur Firebase | "user_abc123" |
+| `userId` | String | Identifiant textuel de l'utilisateur | "user_abc123" |
+| `pseudo` | String | Pseudonyme de l'utilisateur | "AlphaStriker" |
+| `teamId` | String | ID de l'équipe sélectionnée | "team_1" |
+| `currency` | Number | Monnaie de l'utilisateur | 500 |
 
-## Compte Rendu des Modifications (Sélection d'Équipe)
+## 3. Collection : `pois` (Points d'Intérêt)
 
-La fonctionnalité de sélection d'équipe a été mise à jour pour charger dynamiquement les équipes au lieu d'utiliser des valeurs codées en dur dans l'interface utilisateur et le fragment.
+Cette collection contient tous les points d'intérêt interactifs du jeu, principalement situés à Toulouse.
 
-**Changements effectués :**
-1.  **Interface Utilisateur (`fragment_team_selection.xml`) :** Les boutons codés en dur ont été remplacés par un `RecyclerView` (`recycler_view_teams`) pour afficher la liste dynamique.
-2.  **Structure de Données :** Une classe interne `TeamInfo` a été introduite pour encapsuler `teamId`, `name`, et `colorHex`.
-3.  **Logique du Fragment (`TeamSelectionFragment.java`) :**
-    *   La Map statique des équipes codées en dur a été supprimée.
-    *   Un `TeamAdapter` a été créé pour gérer l'affichage des éléments dans le `RecyclerView`.
-    *   La méthode `loadTeams()` a été implémentée (actuellement simulée) pour charger les données des équipes et notifier l'adaptateur.
-    *   La vérification de connexion a été temporairement commentée pour permettre le test de cette fonctionnalité sans nécessiter une connexion Firebase active.
+| Champ | Type | Description | Valeur Exemple |
+| :--- | :--- | :--- | :--- |
+| **Document ID** | String | Identifiant unique du POI | "poi_capitole" |
+| `name` | String | Nom du POI | "Capitole de Toulouse" |
+| `location` | Object | Coordonnées géographiques | `{latitude: 43.6047, longitude: 1.4442}` |
+| `location.latitude` | Number | Latitude en degrés | 43.6047 |
+| `location.longitude` | Number | Longitude en degrés | 1.4442 |
+| `ownerTeamId` | String/null | ID de l'équipe propriétaire | null (neutre) |
+| `currentScore` | Number | Points disponibles pour ce POI | 500 |
+| `lastUpdated` | Timestamp | Dernière mise à jour | Timestamp Firebase |
+| `qcm` | Object | Questionnaire associé au POI | Voir structure ci-dessous |
 
-**Prochaine Étape :** Remplacer la simulation dans `loadTeams()` par une requête Firestore réelle ciblant la collection `teams` pour obtenir les données dynamiques.
+### Structure de l'objet `qcm` :
+
+| Champ | Type | Description | Valeur Exemple |
+| :--- | :--- | :--- | :--- |
+| `question` | String | Question posée au joueur | "Quelle est la fonction principale du Capitole ?" |
+| `options` | Array | Liste des options de réponse | `["Musée d'art", "Hôtel de ville et théâtre", ...]` |
+| `correctAnswerIndex` | Number | Index de la réponse correcte | 1 |
+| `theme` | String | Thème de la question | "Architecture et Institutions" |
+
+**Catégories de POIs disponibles :**
+- Centre-ville historique (Capitole, Place du Capitole, Basilique Saint-Sernin, Couvent des Jacobins, Pont Neuf)
+- Quartiers et monuments (Quartier des Carmes, Musée des Augustins, Hôtel d'Assézat)
+- Parcs et espaces verts (Jardin des Plantes, Jardin Royal, Grand Rond)
+- Éducation et recherche (Université Toulouse Capitole, Université Paul Sabatier)
+- Transports et infrastructures (Gare Matabiau, Aéroport Toulouse-Blagnac)
+- Culture et divertissement (Théâtre du Capitole, Zénith, Musée des Abattoirs)
+- Sport et loisirs (Stadium de Toulouse, Piscine Alfred Junquet)
+- Quartiers résidentiels et commerces (Saint-Cyprien, Minimes, Saint-Michel)
+- Ponts et Garonne (Pont Saint-Pierre, Pont des Demoiselles)
+- Industrie et technologie (Musée Aeroscopia, Cité de l'Espace)
+- Patrimoine religieux (Cathédrale Saint-Étienne, Basilique Notre-Dame de la Daurade)
+- Places et espaces publics (Place Wilson, Place Esquirol)
+- Marchés et commerce (Marché Victor Hugo, Marché des Carmes)
+
+## Relations entre les collections
+
+- **`users.teamId`** → **`teams.teamId`** : Chaque utilisateur est lié à une équipe
+- **`pois.ownerTeamId`** → **`teams.teamId`** : Chaque POI peut être contrôlé par une équipe (ou être neutre si null)
+
+## Notes importantes
+
+1. **Coordonnées géographiques** : Tous les POIs utilisent des coordonnées dans la zone de Toulouse (latitude ~43.6°, longitude ~1.4°)
+2. **Gestion des équipes** : Les POIs neutres ont `ownerTeamId` à `null`
+3. **Système de points** : Chaque POI a un `currentScore` qui peut être gagné par les équipes
+4. **QCM intégré** : Chaque POI inclut un questionnaire thématique pour l'interaction utilisateur

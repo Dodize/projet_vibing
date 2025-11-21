@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.vibing.R; // Import R for resources
 import com.example.vibing.databinding.FragmentHomeBinding;
+import com.example.vibing.models.Poi;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -63,6 +64,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private Random random = new Random();
     private TextView currentInfoBubble;
     private Marker currentSelectedMarker;
+    private HomeViewModel homeViewModel;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -142,61 +144,61 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     // --- End Simple POI Adapter ---
 
 
-    private void initializePOIs() {
-        poiList = new ArrayList<>();
-        
-        // POIs around Paris area with realistic coordinates
-        poiList.add(new PoiItem("Tour Eiffel", 48.8584, 2.2945, 100, 0));
-        poiList.add(new PoiItem("Musée du Louvre", 48.8606, 2.3376, 150, 2));
-        poiList.add(new PoiItem("Notre Dame", 48.8530, 2.3499, 120, 1));
-        poiList.add(new PoiItem("Arc de Triomphe", 48.8738, 2.2950, 80, 3));
-        poiList.add(new PoiItem("Sacré-Cœur", 48.8867, 2.3431, 90, 0));
-        poiList.add(new PoiItem("Panthéon", 48.8462, 2.3454, 110, 4));
-        poiList.add(new PoiItem("Place des Vosges", 48.8566, 2.3639, 70, 0));
-        
-        // POIs around Toulouse area with realistic coordinates
-        poiList.add(new PoiItem("Capitole", 43.6047, 1.4442, 130, 1));
-        poiList.add(new PoiItem("Basilique Saint-Sernin", 43.6085, 1.4421, 95, 0));
-        poiList.add(new PoiItem("Pont Neuf", 43.6037, 1.4326, 85, 3));
-        poiList.add(new PoiItem("Jardin des Plantes", 43.6077, 1.4497, 75, 0));
-        poiList.add(new PoiItem("Musée des Augustins", 43.6039, 1.4470, 105, 2));
-        poiList.add(new PoiItem("Canal du Midi", 43.6053, 1.4389, 90, 4));
-        poiList.add(new PoiItem("Hôtel d'Assézat", 43.6041, 1.4456, 80, 0));
-        poiList.add(new PoiItem("Église des Jacobins", 43.6072, 1.4408, 100, 5));
-        poiList.add(new PoiItem("Place du Capitole", 43.6047, 1.4442, 115, 1));
-        poiList.add(new PoiItem("Quai de la Daurade", 43.6021, 1.4339, 70, 0));
-        
-        // Add markers to map
-        for (PoiItem poi : poiList) {
-            Marker poiMarker = new Marker(mapView);
-            GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
-            poiMarker.setPosition(poiLocation);
-            poiMarker.setTitle(poi.name);
-            poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
-            poiMarker.setIcon(getTeamIcon(poi.owningTeam));
-            poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-            poiMarker.setOnMarkerClickListener(this);
-            // Increase touch area for easier interaction on mobile
-            poiMarker.setInfoWindow(null); // Disable default info window
-            poiMarker.setPanToView(false); // Don't auto-pan on click
-            
-            poi.marker = poiMarker;
-            mapView.getOverlays().add(poiMarker);
-        }
-        
-        updatePoiDistancesAndList();
-        
-        // Center map on user location if available, otherwise Toulouse as fallback
-        if (currentUserLocation != null) {
-            mapView.getController().setCenter(currentUserLocation);
-            mapView.getController().setZoom(15.0);
-        } else {
-            mapView.getController().setCenter(new GeoPoint(43.6047, 1.4442));
-            mapView.getController().setZoom(13.0);
-        }
-        
-        // Force map refresh
-        mapView.invalidate();
+    private void initializePOIsFromFirebase() {
+        homeViewModel.getPois().observe(getViewLifecycleOwner(), pois -> {
+            if (pois != null) {
+                poiList = new ArrayList<>();
+                
+                // Convert Firebase POIs to local PoiItems
+                for (Poi poi : pois) {
+                    android.util.Log.d("HomeFragment", "Converting POI: " + poi.getName() + 
+                        " at (" + poi.getLatitude() + ", " + poi.getLongitude() + ")");
+                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
+                    poiList.add(poiItem);
+                }
+                
+                // Clear existing markers from map
+                if (mapView != null) {
+                    mapView.getOverlays().clear();
+                    // Re-add user marker if it exists
+                    if (userMarker != null) {
+                        mapView.getOverlays().add(userMarker);
+                    }
+                }
+                
+                // Add markers to map
+                for (PoiItem poi : poiList) {
+                    Marker poiMarker = new Marker(mapView);
+                    GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
+                    poiMarker.setPosition(poiLocation);
+                    poiMarker.setTitle(poi.name);
+                    poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam));
+                    poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                    poiMarker.setOnMarkerClickListener(this);
+                    // Increase touch area for easier interaction on mobile
+                    poiMarker.setInfoWindow(null); // Disable default info window
+                    poiMarker.setPanToView(false); // Don't auto-pan on click
+                    
+                    poi.marker = poiMarker;
+                    mapView.getOverlays().add(poiMarker);
+                }
+                
+                updatePoiDistancesAndList();
+                
+                // Center map on user location if available, otherwise Toulouse as fallback
+                if (currentUserLocation != null) {
+                    mapView.getController().setCenter(currentUserLocation);
+                    mapView.getController().setZoom(15.0);
+                } else {
+                    mapView.getController().setCenter(new GeoPoint(43.6047, 1.4442));
+                    mapView.getController().setZoom(13.0);
+                }
+                
+                // Force map refresh
+                mapView.invalidate();
+            }
+        });
     }
     
     private String getTeamName(int teamId) {
@@ -306,8 +308,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        HomeViewModel homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
@@ -423,8 +424,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         poiRecyclerView = binding.poiListRecyclerView;
         poiRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         
-        // 3. Initialize POIs on the map first
-        initializePOIs();
+        // 3. Initialize POIs from Firebase
+        initializePOIsFromFirebase();
         
         // 4. Check Permissions and Start Location Logic
         checkLocationPermissions();
