@@ -1,0 +1,134 @@
+{
+  "poi_capitole": {
+    "latitude": 43.60465,
+    "longitude": 1.44421
+  },
+  "poi_place_du_capitole": {
+    "latitude": 43.6044071,
+    "longitude": 1.4433773
+  },
+  "poi_basilique_saint_sernin": {
+    "latitude": 43.6083156,
+    "longitude": 1.4418039
+  },
+  "poi_jacobins": {
+    "latitude": 43.60344,
+    "longitude": 1.44042
+  },
+  "poi_pont_neuf": {
+    "latitude": 43.60318,
+    "longitude": 1.43021
+  },
+  "poi_carmes": {
+    "latitude": 43.59886,
+    "longitude": 1.43896
+  },
+  "poi_augustins": {
+    "latitude": 43.60367,
+    "longitude": 1.43501
+  },
+  "poi_hotel_d_assezet": {
+    "latitude": 43.60301,
+    "longitude": 1.43718
+  },
+  "poi_jardin_des_plantes": {
+    "latitude": 43.5929,
+    "longitude": 1.45329
+  },
+  "poi_jardin_royal": {
+    "latitude": 43.60351,
+    "longitude": 1.4298
+  },
+  "poi_grand_rond": {
+    "latitude": 43.60778,
+    "longitude": 1.43802
+  },
+  "poi_universite_capitole": {
+    "latitude": 43.6071,
+    "longitude": 1.4472
+  },
+  "poi_paul_sabatier": {
+    "latitude": 43.56095,
+    "longitude": 1.46685
+  },
+  "poi_matabiau": {
+    "latitude": 43.61108,
+    "longitude": 1.45327
+  },
+  "poi_aeroport_blagnac": {
+    "latitude": 43.62998,
+    "longitude": 1.36304
+  },
+  "poi_theatre_du_capitole": {
+    "latitude": 43.60465,
+    "longitude": 1.44421
+  },
+  "poi_zenith": {
+    "latitude": 43.582,
+    "longitude": 1.4339
+  },
+  "poi_abattoirs": {
+    "latitude": 43.5996,
+    "longitude": 1.4259
+  },
+  "poi_stadium_toulouse": {
+    "latitude": 43.58135,
+    "longitude": 1.43195
+  },
+  "poi_piscine_alfred_junquet": {
+    "latitude": 43.60582,
+    "longitude": 1.44775
+  },
+  "poi_saint_cyprien": {
+    "latitude": 43.5978,
+    "longitude": 1.4256
+  },
+  "poi_minimes": {
+    "latitude": 43.6123,
+    "longitude": 1.4567
+  },
+  "poi_saint_michel": {
+    "latitude": 43.59978,
+    "longitude": 1.44012
+  },
+  "poi_pont_saint_pierre": {
+    "latitude": 43.603,
+    "longitude": 1.4325
+  },
+  "poi_pont_des_demoiselles": {
+    "latitude": 43.57893,
+    "longitude": 1.4432
+  },
+  "poi_aeroscopia": {
+    "latitude": 43.63252,
+    "longitude": 1.36888
+  },
+  "poi_cite_de_l_espace": {
+    "latitude": 43.5856,
+    "longitude": 1.4987
+  },
+  "poi_cathedrale_saint_etienne": {
+    "latitude": 43.6045,
+    "longitude": 1.4502
+  },
+  "poi_basilique_notre_dame_de_la_daurade": {
+    "latitude": 43.60008,
+    "longitude": 1.43278
+  },
+  "poi_place_wilson": {
+    "latitude": 43.60779,
+    "longitude": 1.4456
+  },
+  "poi_place_esquirol": {
+    "latitude": 43.6032,
+    "longitude": 1.4401
+  },
+  "poi_marche_victor_hugo": {
+    "latitude": 43.60562,
+    "longitude": 1.44779
+  },
+  "poi_marche_des_carmes": {
+    "latitude": 43.59886,
+    "longitude": 1.43896
+  }
+}

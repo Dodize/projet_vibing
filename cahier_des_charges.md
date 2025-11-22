@@ -21,7 +21,7 @@ L'objectif principal est de créer une application mobile Android permettant aux
 
 ### 3.2. Système de Carte et de Zones
 
-*   **Carte :** L'application affichera une carte découpée en **zones**.
+*   **Carte :** L'application affichera une carte découpée en **zones**. Le système de carte est OpenStreetMap.
 *   **Lieux d'Intérêt (POI) :**
     *   Chaque zone est centrée autour d'un **Lieu d'Intérêt** (statue, monument, élément connu).
     *   Les POI apparaissent sur la carte.

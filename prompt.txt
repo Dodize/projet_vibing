@@ -1,0 +1,95 @@
+---------------------------- PROCESS STARTED (16763) for package com.example.vibing ----------------------------
+2025-11-18 18:49:50.971 16763-16763 ziparchive              com.example.vibing                   W  Unable to open '/data/app/~~jmqxEhUzNR37fo8UB7aC6Q==/com.example.vibing-G1L6tkiDQzbfYMsWrRy8LA==/base.dm': No such file or directory
+2025-11-18 18:49:50.971 16763-16763 ziparchive              com.example.vibing                   W  Unable to open '/data/app/~~jmqxEhUzNR37fo8UB7aC6Q==/com.example.vibing-G1L6tkiDQzbfYMsWrRy8LA==/base.dm': No such file or directory
+2025-11-18 18:49:51.120 16763-16763 nativeloader            com.example.vibing                   D  Configuring classloader-namespace for other apk /data/app/~~jmqxEhUzNR37fo8UB7aC6Q==/com.example.vibing-G1L6tkiDQzbfYMsWrRy8LA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~jmqxEhUzNR37fo8UB7aC6Q==/com.example.vibing-G1L6tkiDQzbfYMsWrRy8LA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/com.example.vibing
+2025-11-18 18:49:51.133 16763-16763 GraphicsEnvironment     com.example.vibing                   V  ANGLE Developer option for 'com.example.vibing' set to: 'default'
+2025-11-18 18:49:51.133 16763-16763 GraphicsEnvironment     com.example.vibing                   V  ANGLE GameManagerService for com.example.vibing: false
+2025-11-18 18:49:51.133 16763-16763 GraphicsEnvironment     com.example.vibing                   V  Updatable production driver is not supported on the device.
+2025-11-18 18:49:51.138 16763-16763 NetworkSecurityConfig   com.example.vibing                   D  No Network Security Config specified, using platform default
+2025-11-18 18:49:51.147 16763-16763 NetworkSecurityConfig   com.example.vibing                   D  No Network Security Config specified, using platform default
+2025-11-18 18:49:51.168 16763-16790 OpenGLRenderer          com.example.vibing                   D  RenderThread::requireGlContext()
+2025-11-18 18:49:51.169 16763-16790 AdrenoGLES-0            com.example.vibing                   I  QUALCOMM build                   : e1ac91e, I2b3b5fbd00
+                                                                                                    Build Date                       : 11/17/20
+                                                                                                    OpenGL ES Shader Compiler Version: EV031.32.02.06
+                                                                                                    Local Branch                     : 
+                                                                                                    Remote Branch                    : 
+                                                                                                    Remote Branch                    : 
+                                                                                                    Reconstruct Branch               : 
+2025-11-18 18:49:51.169 16763-16790 AdrenoGLES-0            com.example.vibing                   I  Build Config                     : S P 10.0.7 AArch64
+2025-11-18 18:49:51.169 16763-16790 AdrenoGLES-0            com.example.vibing                   I  Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+2025-11-18 18:49:51.173 16763-16790 AdrenoGLES-0            com.example.vibing                   I  PFP: 0x016ee190, ME: 0x00000000
+2025-11-18 18:49:51.181 16763-16790 OpenGLRenderer          com.example.vibing                   D  RenderThread::setGrContext()
+2025-11-18 18:49:51.200 16763-16763 AppCompatDelegate       com.example.vibing                   D  Checking for metadata for AppLocalesMetadataHolderService : Service not found
+2025-11-18 18:49:51.282 16763-16763 Compatibil...geReporter com.example.vibing                   D  Compat change id reported: 210923482; UID 10363; state: ENABLED
+2025-11-18 18:49:51.286 16763-16763 .example.vibing         com.example.vibing                   W  Accessing hidden method Landroid/view/View;->computeFitSystemWindows(Landroid/graphics/Rect;Landroid/graphics/Rect;)Z (unsupported, reflection, allowed)
+2025-11-18 18:49:51.391 16763-16763 StorageUtils            com.example.vibing                   I  /data/user/0/com.example.vibing/files is writable
+2025-11-18 18:49:51.394 16763-16763 StorageUtils            com.example.vibing                   I  /storage/emulated/0/Android/data/com.example.vibing/files is writable
+2025-11-18 18:49:51.395 16763-16763 StorageUtils            com.example.vibing                   I  /data/user/0/com.example.vibing/files is writable
+2025-11-18 18:49:51.396 16763-16763 StorageUtils            com.example.vibing                   I  /storage/emulated/0/Android/data/com.example.vibing/files is writable
+2025-11-18 18:49:51.398 16763-16763 OsmDroid                com.example.vibing                   I  Using tile source: Mapnik
+2025-11-18 18:49:51.402 16763-16763 OsmDroid                com.example.vibing                   I  Tile cache increased from 0 to 9
+2025-11-18 18:49:51.434 16763-16763 AndroidRuntime          com.example.vibing                   D  Shutting down VM
+2025-11-18 18:49:51.436 16763-16763 AndroidRuntime          com.example.vibing                   E  FATAL EXCEPTION: main (Ask Gemini)
+                                                                                                    Process: com.example.vibing, PID: 16763
+                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.vibing/com.example.vibing.MainActivity}: android.view.InflateException: Binary XML file line #31 in com.example.vibing:layout/activity_main: Binary XML file line #31 in com.example.vibing:layout/activity_main: Error inflating class fragment
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4169)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4325)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:101)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2574)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:106)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:226)
+                                                                                                    	at android.os.Looper.loop(Looper.java:313)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:8762)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:604)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1067)
+                                                                                                    Caused by: android.view.InflateException: Binary XML file line #31 in com.example.vibing:layout/activity_main: Binary XML file line #31 in com.example.vibing:layout/activity_main: Error inflating class fragment
+                                                                                                    Caused by: android.view.InflateException: Binary XML file line #31 in com.example.vibing:layout/activity_main: Error inflating class fragment
+                                                                                                    Caused by: java.lang.ClassCastException: androidx.constraintlayout.widget.ConstraintLayout cannot be cast to android.widget.FrameLayout
+                                                                                                    	at com.example.vibing.ui.home.HomeFragment.setupInfoBubble(HomeFragment.java:615)
+                                                                                                    	at com.example.vibing.ui.home.HomeFragment.onCreateView(HomeFragment.java:327)
+                                                                                                    	at androidx.fragment.app.Fragment.performCreateView(Fragment.java:3114)
+                                                                                                    	at androidx.fragment.app.FragmentStateManager.createView(FragmentStateManager.java:557)
+                                                                                                    	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:272)
+                                                                                                    	at androidx.fragment.app.FragmentStore.moveToExpectedState(FragmentStore.java:114)
+                                                                                                    	at androidx.fragment.app.FragmentManager.moveToState(FragmentManager.java:1455)
+                                                                                                    	at androidx.fragment.app.FragmentManager.dispatchStateChange(FragmentManager.java:3034)
+                                                                                                    	at androidx.fragment.app.FragmentManager.dispatchViewCreated(FragmentManager.java:2945)
+                                                                                                    	at androidx.fragment.app.Fragment.performViewCreated(Fragment.java:3148)
+                                                                                                    	at androidx.fragment.app.FragmentStateManager.ensureInflatedView(FragmentStateManager.java:410)
+                                                                                                    	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:271)
+                                                                                                    	at androidx.fragment.app.FragmentLayoutInflaterFactory.onCreateView(FragmentLayoutInflaterFactory.java:142)
+                                                                                                    	at androidx.fragment.app.FragmentController.onCreateView(FragmentController.java:136)
+                                                                                                    	at androidx.fragment.app.FragmentActivity.dispatchFragmentsOnCreateView(FragmentActivity.java:247)
+                                                                                                    	at androidx.fragment.app.FragmentActivity.onCreateView(FragmentActivity.java:226)
+                                                                                                    	at android.view.LayoutInflater.tryCreateView(LayoutInflater.java:1091)
+                                                                                                    	at android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:1019)
+                                                                                                    	at android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:983)
+                                                                                                    	at android.view.LayoutInflater.rInflate(LayoutInflater.java:1145)
+                                                                                                    	at android.view.LayoutInflater.rInflateChildren(LayoutInflater.java:1106)
+                                                                                                    	at android.view.LayoutInflater.inflate(LayoutInflater.java:692)
+                                                                                                    	at android.view.LayoutInflater.inflate(LayoutInflater.java:544)
+                                                                                                    	at com.example.vibing.databinding.ActivityMainBinding.inflate(ActivityMainBinding.java:49)
+                                                                                                    	at com.example.vibing.databinding.ActivityMainBinding.inflate(ActivityMainBinding.java:43)
+                                                                                                    	at com.example.vibing.MainActivity.onCreate(MainActivity.java:23)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:8591)
+2025-11-18 18:49:51.436 16763-16763 AndroidRuntime          com.example.vibing                   E  	at android.app.Activity.performCreate(Activity.java:8570) (Ask Gemini)
+                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1384)
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4150)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4325)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:101)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:135)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2574)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:106)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:226)
+                                                                                                    	at android.os.Looper.loop(Looper.java:313)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:8762)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:604)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1067)
+2025-11-18 18:49:51.459 16763-16763 Process                 com.example.vibing                   I  Sending signal. PID: 16763 SIG: 9
+---------------------------- PROCESS ENDED (16763) for package com.example.vibing ----------------------------
+2025-11-18 18:49:51.547  1440-1847  WindowManager           system_server                        E  win=Window{2dd3d9b u0 Splash Screen com.example.vibing EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:5997 com.android.server.wm.ActivityRecord$$ExternalSyntheticLambda10.accept:2 java.util.ArrayList.forEach:1262 com.android.server.wm.ActivityRecord.onAnimationFinished:8607 com.android.server.wm.ActivityRecord.postApplyAnimation:6252 com.android.server.wm.ActivityRecord.commitVisibility:6224 com.android.server.wm.ActivityRecord.commitVisibility:6228 
