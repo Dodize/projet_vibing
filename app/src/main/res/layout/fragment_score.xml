@@ -94,16 +94,32 @@
     <Button
         android:id="@+id/button_record_voice"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="70dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        android:layout_marginBottom="48dp"
+        android:layout_marginBottom="100dp"
         android:backgroundTint="@color/accent_orange"
         android:text="🎤 Enregistrer ma demande"
         android:textSize="18sp"
         android:textStyle="bold"
         app:cornerRadius="28dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/button_manual_actions"
+        android:layout_width="0dp"
+        android:layout_height="70dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="20dp"
+        android:backgroundTint="@color/primary_green"
+        android:text="Actions Manuelles"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:cornerRadius="28dp"
+        app:layout_constraintBottom_toTopOf="@+id/button_record_voice"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 

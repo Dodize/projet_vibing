@@ -8,18 +8,37 @@ public class ScoreViewModel extends ViewModel {
 
     private final MutableLiveData<Integer> mScore;
     private final MutableLiveData<Long> mLastCaptureTime;
+    private final MutableLiveData<Integer> mMoneyScore;
 
-    private static final long DECREMENT_RATE_MILLIS = 60 * 1000; // 1 point per minute
+    private static final long DECREMENT_RATE_MILLIS = 1 * 1000; // 1 point per second
 
     public ScoreViewModel() {
         mScore = new MutableLiveData<>();
         mLastCaptureTime = new MutableLiveData<>();
-        mScore.setValue(100); // Initial local score
+        mMoneyScore = new MutableLiveData<>();
+        mScore.setValue(10); // Initial local score
         mLastCaptureTime.setValue(System.currentTimeMillis()); // Initial local capture time
+        mMoneyScore.setValue(0); // Initial money score
     }
 
     public LiveData<Integer> getScore() {
         return mScore;
+    }
+
+    public LiveData<Integer> getMoneyScore() {
+        return mMoneyScore;
+    }
+
+    public void addMoneyBonus(int amount) {
+        Integer currentMoney = mMoneyScore.getValue();
+        if (currentMoney != null) {
+            mMoneyScore.setValue(currentMoney + amount);
+        }
+    }
+
+    public void setZoneScore(int newScore) {
+        mScore.setValue(newScore);
+        mLastCaptureTime.setValue(System.currentTimeMillis());
     }
 
     public void updateScoreBasedOnTime(String zoneId) {
@@ -31,7 +50,7 @@ public class ScoreViewModel extends ViewModel {
             long timeElapsed = currentTime - lastCapture;
 
             int decrementedAmount = (int) (timeElapsed / DECREMENT_RATE_MILLIS);
-            int newScore = Math.max(0, currentScore - decrementedAmount);
+                        int newScore = Math.max(10, currentScore - decrementedAmount);
 
             mScore.setValue(newScore);
             mLastCaptureTime.setValue(currentTime);
