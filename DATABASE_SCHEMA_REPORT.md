@@ -46,16 +46,6 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 | `ownerTeamId` | String/null | ID de l'équipe propriétaire | null (neutre) |
 | `currentScore` | Number | Points disponibles pour ce POI | 500 |
 | `lastUpdated` | Timestamp | Dernière mise à jour | Timestamp Firebase |
-| `qcm` | Object | Questionnaire associé au POI | Voir structure ci-dessous |
-
-### Structure de l'objet `qcm` :
-
-| Champ | Type | Description | Valeur Exemple |
-| :--- | :--- | :--- | :--- |
-| `question` | String | Question posée au joueur | "Quelle est la fonction principale du Capitole ?" |
-| `options` | Array | Liste des options de réponse | `["Musée d'art", "Hôtel de ville et théâtre", ...]` |
-| `correctAnswerIndex` | Number | Index de la réponse correcte | 1 |
-| `theme` | String | Thème de la question | "Architecture et Institutions" |
 
 **Catégories de POIs disponibles :**
 - Centre-ville historique (Capitole, Place du Capitole, Basilique Saint-Sernin, Couvent des Jacobins, Pont Neuf)
@@ -82,4 +72,4 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 1. **Coordonnées géographiques** : Tous les POIs utilisent des coordonnées dans la zone de Toulouse (latitude ~43.6°, longitude ~1.4°)
 2. **Gestion des équipes** : Les POIs neutres ont `ownerTeamId` à `null`
 3. **Système de points** : Chaque POI a un `currentScore` qui peut être gagné par les équipes
-4. **QCM intégré** : Chaque POI inclut un questionnaire thématique pour l'interaction utilisateur
+4. **Questions générales** : Les questions QCM sont gérées globalement dans l'application et ne dépendent pas des POIs spécifiques

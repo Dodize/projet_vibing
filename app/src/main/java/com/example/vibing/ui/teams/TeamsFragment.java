@@ -45,12 +45,12 @@ public class TeamsFragment extends Fragment {
         try {
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             Toast.makeText(getContext(), "LayoutManager set", Toast.LENGTH_SHORT).show();
-            
-            // Initialize adapter
+             
+            // Initialize empty list and adapter
             teamList = new ArrayList<>();
             teamAdapter = new SimpleTeamAdapter(teamList);
             recyclerView.setAdapter(teamAdapter);
-            Toast.makeText(getContext(), "Adapter set", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Adapter set with empty list", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(getContext(), "Setup error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }

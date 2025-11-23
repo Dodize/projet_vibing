@@ -27,6 +27,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.vibing.R; // Import R for resources
 import com.example.vibing.databinding.FragmentHomeBinding;
 import com.example.vibing.models.Poi;
+
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -118,16 +121,27 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         @Override
         public void onBindViewHolder(@NonNull PoiViewHolder holder, int position) {
             PoiItem poi = poiList.get(position);
+            
+            Toast.makeText(holder.itemView.getContext(), "Binding: " + poi.name + " to " + holder.poiNameTextView.getClass().getSimpleName(), Toast.LENGTH_SHORT).show();
+            
             holder.poiNameTextView.setText(poi.name);
             // Format distance for display
             String distanceText = String.format("%.2f km", poi.distance);
             holder.poiDistanceTextView.setText(distanceText);
+            
+            // Set click listener
+            holder.itemView.setOnClickListener(v -> {
+                navigateToPoiScore(poi);
+            });
         }
 
         @Override
         public int getItemCount() {
-            return poiList.size();
+            int size = poiList.size();
+            return size;
         }
+        
+
 
         public class PoiViewHolder extends RecyclerView.ViewHolder {
             TextView poiNameTextView;
@@ -138,6 +152,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 // Assuming these IDs exist in list_item_poi.xml
                 poiNameTextView = itemView.findViewById(R.id.poiNameTextView);
                 poiDistanceTextView = itemView.findViewById(R.id.poiDistanceTextView);
+                
+                Toast.makeText(itemView.getContext(), "ViewHolder: nameView=" + (poiNameTextView != null ? "found" : "null") + ", distanceView=" + (poiDistanceTextView != null ? "found" : "null"), Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -280,13 +296,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Sort by distance
         poiList.sort((a, b) -> Double.compare(a.distance, b.distance));
         
-        // Update adapter
-        if (poiListAdapter == null) {
-            poiListAdapter = new PoiListAdapter(poiList);
-            poiRecyclerView.setAdapter(poiListAdapter);
-        } else {
-            poiListAdapter.notifyDataSetChanged();
-        }
+        // Update adapter with new data
+        Toast.makeText(getContext(), "updatePoisDisplay: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
+        
+        // Create new adapter with fresh data to ensure it's properly updated
+        poiListAdapter = new PoiListAdapter(new ArrayList<>(poiList));
+        poiRecyclerView.setAdapter(poiListAdapter);
+        Toast.makeText(getContext(), "New adapter created and set", Toast.LENGTH_SHORT).show();
         
         mapView.invalidate();
     }
@@ -403,6 +419,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // 2. Initialize POI List RecyclerView
         poiRecyclerView = binding.poiListRecyclerView;
         poiRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        
+        // Create empty adapter initially to prevent "No adapter attached" error
+        poiListAdapter = new PoiListAdapter(new ArrayList<>());
+        poiRecyclerView.setAdapter(poiListAdapter);
         
         // 3. Initialize POIs from Firebase
         initializePOIsFromFirebase();
@@ -525,6 +545,15 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             startLocationUpdates();
+        }
+        // Refresh POI list when returning to fragment
+        Toast.makeText(getContext(), "onResume: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "onResume: adapter = " + (poiListAdapter != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "onResume: recyclerView adapter = " + (poiRecyclerView != null && poiRecyclerView.getAdapter() != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
+        
+        if (poiRecyclerView != null && poiRecyclerView.getAdapter() != null) {
+            poiRecyclerView.getAdapter().notifyDataSetChanged();
+            Toast.makeText(getContext(), "onResume: notifyDataSetChanged called", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -669,6 +698,20 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             currentInfoBubble.setVisibility(View.GONE);
         }
         currentSelectedMarker = null;
+    }
+    
+    private void navigateToPoiScore(PoiItem poi) {
+        // Create bundle with POI data
+        Bundle bundle = new Bundle();
+        bundle.putString("poiName", poi.name);
+        bundle.putFloat("poiLatitude", (float) poi.latitude);
+        bundle.putFloat("poiLongitude", (float) poi.longitude);
+        bundle.putInt("poiScore", poi.score);
+        bundle.putInt("poiOwningTeam", poi.owningTeam);
+        
+        // Navigate to PoiScoreFragment
+        NavController navController = Navigation.findNavController(requireView());
+        navController.navigate(R.id.action_homeFragment_to_poiScoreFragment, bundle);
     }
     
 

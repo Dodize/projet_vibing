@@ -19,17 +19,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 800,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "En quelle année la Tour Eiffel a-t-elle été construite ?",
-      "options": [
-        "1789",
-        "1889",
-        "1900",
-        "1925"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Monuments et Histoire"
-    }
   },
   "poi_arc_triomphe": {
     "name": "Arc de Triomphe",
@@ -37,17 +26,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 600,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel empereur a ordonné la construction de l'Arc de Triomphe ?",
-      "options": [
-        "Jules César",
-        "Napoléon Ier",
-        "Napoléon III",
-        "Charlemagne"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Histoire et Monuments"
-    }
   },
   "poi_notre_dame": {
     "name": "Cathédrale Notre-Dame de Paris",
@@ -55,17 +33,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 700,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel style architectural principal caractérise Notre-Dame ?",
-      "options": [
-        "Gothique",
-        "Roman",
-        "Baroque",
-        "Renaissance"
-      ],
-      "correctAnswerIndex": 0,
-      "theme": "Architecture Religieuse"
-    }
   },
   
   // Musées prestigieux
@@ -75,17 +42,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 750,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle célèbre œuvre est exposée au Louvre ?",
-      "options": [
-        "Les Demoiselles d'Avignon",
-        "La Joconde",
-        "Les Tournesols",
-        "Le Cri"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Musées et Art"
-    }
   },
   "poi_musee_orsay": {
     "name": "Musée d'Orsay",
@@ -93,17 +49,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 500,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel type d'art est principalement exposé au Musée d'Orsay ?",
-      "options": [
-        "Art contemporain",
-        "Art moderne et impressionniste",
-        "Art médiéval",
-        "Art égyptien"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Musées et Art"
-    }
   },
   "poi_centre_pompidou": {
     "name": "Centre Pompidou",
@@ -111,17 +56,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 450,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel style architectural caractérise le Centre Pompidou ?",
-      "options": [
-        "Haussmannien",
-        "Art déco",
-        "High-tech",
-        "Classique"
-      ],
-      "correctAnswerIndex": 2,
-      "theme": "Architecture et Musées"
-    }
   },
   
   // Quartiers célèbres
@@ -131,17 +65,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 400,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle célèbre basilique se trouve à Montmartre ?",
-      "options": [
-        "Sacré-Cœur",
-        "Notre-Dame",
-        "Sainte-Chapelle",
-        "Panthéon"
-      ],
-      "correctAnswerIndex": 0,
-      "theme": "Quartiers et Culture"
-    }
   },
   "poi_quartier_latin": {
     "name": "Quartier Latin",
@@ -149,17 +72,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 350,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle célèbre université se trouve dans le Quartier Latin ?",
-      "options": [
-        "Stanford",
-        "Oxford",
-        "La Sorbonne",
-        "Harvard"
-      ],
-      "correctAnswerIndex": 2,
-      "theme": "Éducation et Quartiers"
-    }
   },
   "poi_le_marais": {
     "name": "Quartier du Marais",
@@ -167,17 +79,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 300,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel type d'architecture est typique du Marais ?",
-      "options": [
-        "Haussmannien",
-        "Médiéval et Renaissance",
-        "Art déco",
-        "Contemporain"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Architecture et Quartiers"
-    }
   },
   
   // Places et jardins
@@ -187,17 +88,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 400,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel type de commerce est célèbre sur la Place Vendôme ?",
-      "options": [
-        "Librairies",
-        "Bijouteries de luxe",
-        "Restaurants gastronomiques",
-        "Galeries d'art"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Commerce et Urbanisme"
-    }
   },
   "poi_place_vosges": {
     "name": "Place des Vosges",
@@ -205,17 +95,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 350,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel écrivain célèbre a habité sur la Place des Vosges ?",
-      "options": [
-        "Victor Hugo",
-        "Marcel Proust",
-        "Albert Camus",
-        "Jean-Paul Sartre"
-      ],
-      "correctAnswerIndex": 0,
-      "theme": "Littérature et Histoire"
-    }
   },
   "poi_jardin_tuileries": {
     "name": "Jardin des Tuileries",
@@ -223,17 +102,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 250,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel musée se trouve à l'extrémité des Tuileries ?",
-      "options": [
-        "Musée d'Orsay",
-        "Louvre",
-        "Centre Pompidou",
-        "Musée Rodin"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Jardins et Musées"
-    }
   },
   "poi_jardin_luxembourg": {
     "name": "Jardin du Luxembourg",
@@ -241,17 +109,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 300,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle institution politique se trouve près du Jardin du Luxembourg ?",
-      "options": [
-        "Élysée",
-        "Matignon",
-        "Sénat",
-        "Assemblée Nationale"
-      ],
-      "correctAnswerIndex": 2,
-      "theme": "Politique et Jardins"
-    }
   },
   
   // Monuments religieux
@@ -261,17 +118,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 450,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle caractéristique rend la Sainte-Chapelle célèbre ?",
-      "options": [
-        "Son orgue",
-        "Ses vitraux",
-        "Son clocher",
-        "Sa crypte"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Architecture Religieuse"
-    }
   },
   "poi_panthéon": {
     "name": "Panthéon",
@@ -279,17 +125,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 400,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel type de personnage est inhumé au Panthéon ?",
-      "options": [
-        "Rois",
-        "Grands personnages de la nation",
-        "Artistes uniquement",
-        "Militaires uniquement"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Histoire et Mémoire"
-    }
   },
   
   // Transports et infrastructures
@@ -299,17 +134,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 300,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle destination internationale principale dessert la Gare du Nord ?",
-      "options": [
-        "Rome",
-        "Londres",
-        "Berlin",
-        "Madrid"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Transports"
-    }
   },
   "poi_gare_lazare": {
     "name": "Gare Saint-Lazare",
@@ -317,17 +141,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 250,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel peintre a immortalisé la Gare Saint-Lazare ?",
-      "options": [
-        "Van Gogh",
-        "Monet",
-        "Manet",
-        "Renoir"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Art et Transports"
-    }
   },
   
   // Culture et divertissement
@@ -337,17 +150,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 500,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel style architectural caractérise l'Opéra Garnier ?",
-      "options": [
-        "Gothique",
-        "Baroque",
-        "Néo-classique",
-        "Art déco"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Architecture et Spectacles"
-    }
   },
   "poi_champs_elysees": {
     "name": "Avenue des Champs-Élysées",
@@ -355,17 +157,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 400,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel événement célèbre se déroule sur les Champs-Élysées ?",
-      "options": [
-        "Tour de France",
-        "Fête de la Musique",
-        "Défilé du 14 juillet",
-        "Marathon de Paris"
-      ],
-      "correctAnswerIndex": 2,
-      "theme": "Culture et Événements"
-    }
   },
   
   // Îles et ponts
@@ -375,17 +166,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 350,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quel monument célèbre se trouve sur l'Île de la Cité ?",
-      "options": [
-        "Tour Eiffel",
-        "Notre-Dame",
-        "Arc de Triomphe",
-        "Sacré-Cœur"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Géographie et Monuments"
-    }
   },
   "poi_ile_saint_louis": {
     "name": "Île Saint-Louis",
@@ -393,17 +173,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 250,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle spécialité gastronomique est célèbre sur l'Île Saint-Louis ?",
-      "options": [
-        "Macarons",
-        "Glace Berthillon",
-        "Chocolat",
-        "Fromage"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Gastronomie et Quartiers"
-    }
   },
   
   // Éducation et culture
@@ -413,17 +182,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 300,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle particularité a le Collège de France ?",
-      "options": [
-        "Cours payants",
-        "Cours gratuits et ouverts à tous",
-        "Diplômes uniquement",
-        "Recherche uniquement"
-      ],
-      "correctAnswerIndex": 1,
-      "theme": "Éducation et Recherche"
-    }
   },
   "poi_bibliotheque_francois_mitterrand": {
     "name": "Bibliothèque François Mitterrand",
@@ -431,17 +189,6 @@ const parisPoisData = {
     "ownerTeamId": null,
     "currentScore": 350,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
-    "qcm": {
-      "question": "Quelle forme caractéristique a la BNF François Mitterrand ?",
-      "options": [
-        "Sphérique",
-        "Pyramidale",
-        "Quatre tours en forme de livres ouverts",
-        "Circulaire"
-      ],
-      "correctAnswerIndex": 2,
-      "theme": "Architecture et Culture"
-    }
   }
 };
 
