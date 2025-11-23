@@ -5,6 +5,8 @@
     android:id="@+id/mobile_navigation"
     app:startDestination="@+id/navigation_home">
 
+
+
     <fragment
         android:id="@+id/navigation_home"
         android:name="com.example.vibing.ui.home.HomeFragment"
@@ -28,4 +30,32 @@
         android:name="com.example.vibing.ui.teams.TeamsFragment"
         android:label="@string/title_teams"
         tools:layout="@layout/fragment_teams" />
+
+    <fragment
+        android:id="@+id/poiScoreFragment"
+        android:name="com.example.vibing.ui.score.PoiScoreFragment"
+        android:label="Score POI"
+        tools:layout="@layout/fragment_poi_score" >
+        
+        <argument
+            android:name="poiName"
+            app:argType="string" />
+        <argument
+            android:name="poiLatitude"
+            app:argType="float" />
+        <argument
+            android:name="poiLongitude"
+            app:argType="float" />
+        <argument
+            android:name="poiScore"
+            app:argType="integer" />
+        <argument
+            android:name="poiOwningTeam"
+            app:argType="integer" />
+    </fragment>
+
+    <action
+        android:id="@+id/action_homeFragment_to_poiScoreFragment"
+        app:destination="@id/poiScoreFragment" />
+
 </navigation>

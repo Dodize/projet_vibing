@@ -4,6 +4,8 @@ public class Team {
     private String id;
     private String name;
     private String color;
+    private String teamId;
+    private String colorHex;
 
     public Team() {
     }
@@ -35,5 +37,21 @@ public class Team {
 
     public void setColor(String color) {
         this.color = color;
+    }
+
+    public String getTeamId() {
+        return teamId;
+    }
+
+    public void setTeamId(String teamId) {
+        this.teamId = teamId;
+    }
+
+    public String getColorHex() {
+        return colorHex;
+    }
+
+    public void setColorHex(String colorHex) {
+        this.colorHex = colorHex;
     }
 }
