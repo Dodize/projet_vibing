@@ -5,7 +5,7 @@
     android:layout_margin="8dp"
     android:orientation="vertical">
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/teamButton"
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -14,6 +14,7 @@
         android:textColor="@color/white"
         android:textAllCaps="false"
         android:elevation="4dp"
-        android:stateListAnimator="@null" />
+        android:stateListAnimator="@null"
+        android:background="@drawable/team_button_selector" />
 
 </LinearLayout>

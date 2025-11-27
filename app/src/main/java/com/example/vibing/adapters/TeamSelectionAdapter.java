@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import androidx.appcompat.widget.AppCompatButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -53,8 +54,8 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
         notifyDataSetChanged();
     }
 
-    class TeamViewHolder extends RecyclerView.ViewHolder {
-        private Button teamButton;
+class TeamViewHolder extends RecyclerView.ViewHolder {
+        private AppCompatButton teamButton;
 
         public TeamViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -64,24 +65,40 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
         public void bind(Team team) {
             teamButton.setText(team.getName());
             
+            String teamColor = "#2196F3"; // Couleur par défaut
             try {
                 if (team.getColor() != null && !team.getColor().isEmpty()) {
-                    teamButton.setBackgroundColor(Color.parseColor(team.getColor()));
+                    teamColor = team.getColor();
                 } else if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
-                    teamButton.setBackgroundColor(Color.parseColor(team.getColorHex()));
-                } else {
-                    teamButton.setBackgroundColor(Color.parseColor("#2196F3"));
+                    teamColor = team.getColorHex();
                 }
-            } catch (IllegalArgumentException e) {
-                teamButton.setBackgroundColor(Color.parseColor("#2196F3"));
+            } catch (Exception e) {
+                teamColor = "#2196F3";
             }
             
             if (selectedTeam != null && selectedTeam.getId().equals(team.getId())) {
+                // Sélectionné : fond couleur équipe, texte blanc
                 teamButton.setSelected(true);
-                teamButton.setAlpha(1.0f);
+                teamButton.setTextColor(Color.WHITE);
+                
+                // Créer un background avec la couleur de l'équipe
+                android.graphics.drawable.GradientDrawable selectedDrawable = new android.graphics.drawable.GradientDrawable();
+                selectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                selectedDrawable.setCornerRadius(8f);
+                selectedDrawable.setColor(Color.parseColor(teamColor));
+                teamButton.setBackground(selectedDrawable);
             } else {
+                // Non sélectionné : fond blanc, contour couleur équipe, texte couleur équipe
                 teamButton.setSelected(false);
-                teamButton.setAlpha(0.8f);
+                teamButton.setTextColor(Color.parseColor(teamColor));
+                
+                // Créer un background blanc avec contour couleur équipe
+                android.graphics.drawable.GradientDrawable unselectedDrawable = new android.graphics.drawable.GradientDrawable();
+                unselectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                unselectedDrawable.setCornerRadius(8f);
+                unselectedDrawable.setColor(Color.WHITE);
+                unselectedDrawable.setStroke(4, Color.parseColor(teamColor));
+                teamButton.setBackground(unselectedDrawable);
             }
             
             teamButton.setOnClickListener(v -> {

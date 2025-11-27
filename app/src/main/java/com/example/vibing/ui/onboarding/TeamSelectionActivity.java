@@ -53,8 +53,7 @@ public class TeamSelectionActivity extends AppCompatActivity {
         loadTeams();
         
         continueButton.setOnClickListener(v -> handleContinue());
-        continueButton.setEnabled(false);
-        continueButton.setAlpha(0.5f);
+        updateContinueButtonState();
         
         usernameEditText.addTextChangedListener(new android.text.TextWatcher() {
             @Override
@@ -123,7 +122,14 @@ public class TeamSelectionActivity extends AppCompatActivity {
         String username = usernameEditText.getText().toString().trim();
         boolean isValid = !username.isEmpty() && selectedTeam != null;
         continueButton.setEnabled(isValid);
-        continueButton.setAlpha(isValid ? 1.0f : 0.5f);
+        
+        if (isValid) {
+            continueButton.setAlpha(1.0f);
+            continueButton.setBackgroundColor(getResources().getColor(android.R.color.holo_purple, null));
+        } else {
+            continueButton.setAlpha(0.3f);
+            continueButton.setBackgroundColor(getResources().getColor(android.R.color.darker_gray, null));
+        }
     }
 
     private void saveUserToDatabase(String username, Team team) {
