@@ -80,6 +80,17 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Allow small tolerance for floating point precision
         return Math.abs(lat - 37.4219983) < 0.001 && Math.abs(lon - (-122.084)) < 0.001;
     }
+    
+    // TEMPORAIRE: Forcer la position au Capitole pour tester
+    private GeoPoint getTestLocation() {
+        return new GeoPoint(43.604652, 1.444209); // Capitole de Toulouse
+    }
+    
+    // TEMPORAIRE: Afficher les coordonnées exactes du Capitole pour comparaison
+    private void logCapitoleCoordinates() {
+        android.util.Log.d("CAPITOLE_DEBUG", "Test location: 43.604652, 1.444209");
+        android.util.Log.d("CAPITOLE_DEBUG", "Expected Capitole coordinates should be very close");
+    }
 
     // --- POI Model ---
     private static class PoiItem {
@@ -98,7 +109,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             this.longitude = longitude;
             this.score = score;
             this.owningTeam = owningTeam;
-            this.radius = 50.0; // Rayon par défaut de 50 mètres
+            this.radius = 100.0; // Rayon par défaut de 100m
             this.distance = 0; // Will be calculated
         }
         
@@ -428,31 +439,23 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     return;
                 }
 
-                // Récupère la dernière location
-                Location location = locationResult.getLastLocation();
-                if (location != null) {
-                    // Center map on the received location and update marker
-                    GeoPoint newLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-                    
-                    // Check if this is emulator default location
-                    if (isEmulatorDefaultLocation(newLocation)) {
-                        newLocation = new GeoPoint(43.6047, 1.4442);
-                    }
-                    
-                    currentUserLocation = newLocation;
-                    mapView.getController().setCenter(newLocation);
-                    mapView.getController().setZoom(17.0);
+                // TEMPORAIRE: Forcer la position au Capitole pour tester
+                GeoPoint newLocation = getTestLocation();
+                logCapitoleCoordinates();
+                
+                currentUserLocation = newLocation;
+                mapView.getController().setCenter(newLocation);
+                mapView.getController().setZoom(17.0);
 
-                    if (userMarker != null) {
-                        userMarker.setPosition(newLocation);
-                        userMarker.setTitle("Vous êtes ici");
-                        userMarker.setVisible(true);
-                    }
-                    
-                    // Update POI distances when location changes
-                    updatePoiDistancesAndList();
-                    mapView.invalidate();
+                if (userMarker != null) {
+                    userMarker.setPosition(newLocation);
+                    userMarker.setTitle("Vous êtes ici (TEST - Capitole)");
+                    userMarker.setVisible(true);
                 }
+                
+                // Update POI distances when location changes
+                updatePoiDistancesAndList();
+                mapView.invalidate();
             }
         };
 
@@ -544,33 +547,19 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             // Request an initial location update immediately if possible
             fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
-                if (location != null && userMarker != null) {
-                    GeoPoint initialLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-                    
-                    // Check if this is emulator default location
-                    if (isEmulatorDefaultLocation(initialLocation)) {
-                        initialLocation = new GeoPoint(43.6047, 1.4442);
-                    }
-                    
-                    currentUserLocation = initialLocation;
-                    mapView.getController().setCenter(initialLocation);
-                    mapView.getController().setZoom(17.0);
-                    userMarker.setPosition(initialLocation);
-                    userMarker.setTitle("Vous êtes ici (Dernière connue)");
-                    userMarker.setVisible(true);
-                    
-                    // Update POI distances with initial location
-                    updatePoiDistancesAndList();
-                    mapView.invalidate();
-                } else if (userMarker != null) {
-                    // No last known location, use Toulouse as fallback
-                    GeoPoint fallbackLocation = new GeoPoint(43.6047, 1.4442);
-                    currentUserLocation = fallbackLocation;
-                    userMarker.setTitle("Localisation par défaut (Toulouse)");
-                    userMarker.setPosition(fallbackLocation);
-                    userMarker.setVisible(true);
-                    updatePoiDistancesAndList(); // Update distances with fallback location
-                }
+                // TEMPORAIRE: Forcer la position au Capitole pour tester
+                GeoPoint initialLocation = getTestLocation();
+                
+                currentUserLocation = initialLocation;
+                mapView.getController().setCenter(initialLocation);
+                mapView.getController().setZoom(17.0);
+                userMarker.setPosition(initialLocation);
+                userMarker.setTitle("Vous êtes ici (TEST - Capitole)");
+                userMarker.setVisible(true);
+                
+                // Update POI distances with initial location
+                updatePoiDistancesAndList();
+                mapView.invalidate();
             });
         }
     }
@@ -703,6 +692,14 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                    Math.sin(dLon/2) * Math.sin(dLon/2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         double distanceInMeters = 6371000 * c; // Earth radius in meters
+        
+        // DEBUG: Afficher les informations de débogage
+        android.util.Log.d("POI_ZONE_DEBUG", "POI: " + poi.name);
+        android.util.Log.d("POI_ZONE_DEBUG", "User location: " + currentUserLocation.getLatitude() + ", " + currentUserLocation.getLongitude());
+        android.util.Log.d("POI_ZONE_DEBUG", "POI location: " + poi.latitude + ", " + poi.longitude);
+        android.util.Log.d("POI_ZONE_DEBUG", "Distance: " + distanceInMeters + "m");
+        android.util.Log.d("POI_ZONE_DEBUG", "Radius: " + poi.radius + "m");
+        android.util.Log.d("POI_ZONE_DEBUG", "Is in zone: " + (distanceInMeters <= poi.radius));
         
         return distanceInMeters <= poi.radius;
     }

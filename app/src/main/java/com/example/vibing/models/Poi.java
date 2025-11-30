@@ -21,6 +21,7 @@ public class Poi {
 
     public Poi() {
         // Default constructor for Firestore
+        this.radius = 100.0; // Rayon par défaut de 100m
     }
 
     public Poi(String name, double latitude, double longitude, int score, int owningTeam) {
@@ -29,7 +30,7 @@ public class Poi {
         this.longitude = longitude;
         this.score = score;
         this.owningTeam = owningTeam;
-        this.radius = 50.0; // Rayon par défaut de 50 mètres
+        this.radius = 100.0; // Rayon par défaut de 100m
     }
     
     public Poi(String name, double latitude, double longitude, int score, int owningTeam, double radius) {
@@ -189,7 +190,8 @@ public class Poi {
                 return ((Number) radiusObj).doubleValue();
             }
         }
-        return radius;
+        // Return default radius if not set
+        return radius > 0 ? radius : 100.0;
     }
     
     public void setRadius(double radius) {
