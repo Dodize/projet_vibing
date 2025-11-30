@@ -1,6 +1,7 @@
 package com.example.vibing.ui.home;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -311,6 +312,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        // Display user information from SharedPreferences
+        displayUserInfo();
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
@@ -704,6 +708,29 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Navigate to PoiScoreFragment
         NavController navController = Navigation.findNavController(requireView());
         navController.navigate(R.id.action_homeFragment_to_poiScoreFragment, bundle);
+    }
+    
+    private void displayUserInfo() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        String username = prefs.getString("username", "Joueur");
+        String teamName = prefs.getString("team_name", "Équipe inconnue");
+        int money = prefs.getInt("money", 0);
+        
+        TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
+        TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
+        TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        
+        if (usernameTextView != null) {
+            usernameTextView.setText(username);
+        }
+        
+        if (teamTextView != null) {
+            teamTextView.setText("Équipe: " + teamName);
+        }
+        
+        if (moneyTextView != null) {
+            moneyTextView.setText("Argent: " + money + "€");
+        }
     }
     
 
