@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import androidx.appcompat.widget.AppCompatButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,14 +22,21 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
     private List<Team> teamList;
     private Team selectedTeam;
     private OnTeamClickListener listener;
+    private int totalPlayers;
 
     public interface OnTeamClickListener {
         void onTeamClick(Team team);
     }
 
-    public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
+public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
         this.teamList = teamList;
         this.listener = listener;
+        this.totalPlayers = 0;
+    }
+
+    public void setTotalPlayers(int totalPlayers) {
+        this.totalPlayers = totalPlayers;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -56,13 +64,15 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
 
 class TeamViewHolder extends RecyclerView.ViewHolder {
         private AppCompatButton teamButton;
+        private TextView teamInfoText;
 
         public TeamViewHolder(@NonNull View itemView) {
             super(itemView);
             teamButton = itemView.findViewById(R.id.teamButton);
+            teamInfoText = itemView.findViewById(R.id.teamInfoText);
         }
 
-        public void bind(Team team) {
+public void bind(Team team) {
             teamButton.setText(team.getName());
             
             String teamColor = "#2196F3"; // Couleur par défaut
@@ -74,6 +84,32 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
                 }
             } catch (Exception e) {
                 teamColor = "#2196F3";
+            }
+            
+            // Mettre à jour le texte d'information
+            if (totalPlayers > 0) {
+                int remainingSlots = team.getRemainingSlots(teamList.size(), totalPlayers);
+                String infoText;
+                if (remainingSlots == Integer.MAX_VALUE) {
+                    infoText = "Places illimitées";
+                } else if (remainingSlots > 0) {
+                    infoText = remainingSlots + " place(s) restante(s)";
+                } else {
+                    infoText = "Équipe complète";
+                }
+                teamInfoText.setText(infoText);
+                
+                // Désactiver le bouton si l'équipe est complète
+                teamButton.setEnabled(remainingSlots > 0);
+                if (remainingSlots == 0) {
+                    teamButton.setAlpha(0.5f);
+                } else {
+                    teamButton.setAlpha(1.0f);
+                }
+            } else {
+                teamInfoText.setText("Chargement...");
+                teamButton.setEnabled(true);
+                teamButton.setAlpha(1.0f);
             }
             
             if (selectedTeam != null && selectedTeam.getId().equals(team.getId())) {
@@ -102,7 +138,7 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
             }
             
             teamButton.setOnClickListener(v -> {
-                if (listener != null) {
+                if (listener != null && teamButton.isEnabled()) {
                     listener.onTeamClick(team);
                 }
             });
