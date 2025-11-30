@@ -145,11 +145,8 @@ public class HomeViewModel extends ViewModel {
         }
         
         // Extract owning team
-        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' raw data: " + data.toString());
-        
         if (data.containsKey("ownerTeamId")) {
             String teamId = (String) data.get("ownerTeamId");
-            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' ownerTeamId: " + teamId);
             if (teamId != null && !teamId.equals("null") && !teamId.isEmpty()) {
                 try {
                     // Extract number from "team_X" format
@@ -157,12 +154,10 @@ public class HomeViewModel extends ViewModel {
                         String teamNumber = teamId.substring(5); // Remove "team_" prefix
                         int teamIdInt = Integer.parseInt(teamNumber);
                         poi.setOwningTeam(teamIdInt);
-                        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' extracted team number: " + teamIdInt);
                     } else {
                         // Try direct parsing as fallback
                         int teamIdInt = Integer.parseInt(teamId);
                         poi.setOwningTeam(teamIdInt);
-                        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' parsed team ID directly: " + teamIdInt);
                     }
                 } catch (NumberFormatException e) {
                     poi.setOwningTeam(0); // neutral
@@ -170,23 +165,16 @@ public class HomeViewModel extends ViewModel {
                 }
             } else {
                 poi.setOwningTeam(0); // neutral
-                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' ownerTeamId is null/empty, setting to neutral");
             }
         } else if (data.containsKey("owningTeam")) {
             Object team = data.get("owningTeam");
-            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam field: " + team);
             if (team instanceof Number) {
                 int teamId = ((Number) team).intValue();
                 poi.setOwningTeam(teamId);
-                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam number: " + teamId);
-            } else {
-                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' owningTeam is not a number: " + team);
             }
         } else {
-            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has no team field, setting to neutral");
+            // No team field found, setting to neutral
         }
-        
-        android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' final owning team: " + poi.getOwningTeam());
         
         return poi;
     }

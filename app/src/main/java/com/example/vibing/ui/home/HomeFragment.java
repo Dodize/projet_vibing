@@ -122,7 +122,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         public void onBindViewHolder(@NonNull PoiViewHolder holder, int position) {
             PoiItem poi = poiList.get(position);
             
-            Toast.makeText(holder.itemView.getContext(), "Binding: " + poi.name + " to " + holder.poiNameTextView.getClass().getSimpleName(), Toast.LENGTH_SHORT).show();
+
             
             holder.poiNameTextView.setText(poi.name);
             // Format distance for display
@@ -153,7 +153,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 poiNameTextView = itemView.findViewById(R.id.poiNameTextView);
                 poiDistanceTextView = itemView.findViewById(R.id.poiDistanceTextView);
                 
-                Toast.makeText(itemView.getContext(), "ViewHolder: nameView=" + (poiNameTextView != null ? "found" : "null") + ", distanceView=" + (poiDistanceTextView != null ? "found" : "null"), Toast.LENGTH_LONG).show();
+
             }
         }
     }
@@ -297,12 +297,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         poiList.sort((a, b) -> Double.compare(a.distance, b.distance));
         
         // Update adapter with new data
-        Toast.makeText(getContext(), "updatePoisDisplay: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
-        
         // Create new adapter with fresh data to ensure it's properly updated
         poiListAdapter = new PoiListAdapter(new ArrayList<>(poiList));
         poiRecyclerView.setAdapter(poiListAdapter);
-        Toast.makeText(getContext(), "New adapter created and set", Toast.LENGTH_SHORT).show();
         
         mapView.invalidate();
     }
@@ -547,13 +544,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             startLocationUpdates();
         }
         // Refresh POI list when returning to fragment
-        Toast.makeText(getContext(), "onResume: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
-        Toast.makeText(getContext(), "onResume: adapter = " + (poiListAdapter != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
-        Toast.makeText(getContext(), "onResume: recyclerView adapter = " + (poiRecyclerView != null && poiRecyclerView.getAdapter() != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
-        
         if (poiRecyclerView != null && poiRecyclerView.getAdapter() != null) {
             poiRecyclerView.getAdapter().notifyDataSetChanged();
-            Toast.makeText(getContext(), "onResume: notifyDataSetChanged called", Toast.LENGTH_SHORT).show();
         }
     }
 
