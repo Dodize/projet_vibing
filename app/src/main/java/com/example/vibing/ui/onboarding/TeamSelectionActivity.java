@@ -187,7 +187,7 @@ private void loadTeams() {
     private void saveUserToDatabase(String username, Team team) {
         progressBar.setVisibility(View.VISIBLE);
         
-        User user = new User(username, team.getId(), team.getName(), team.getColor());
+        User user = new User(username, team.getId(), team.getName());
         user.setId(UUID.randomUUID().toString());
         
         db.collection("users")
@@ -214,7 +214,7 @@ private void saveUserPreferences(User user) {
         editor.putString("username", user.getUsername());
         editor.putString("team_id", user.getTeamId());
         editor.putString("team_name", user.getTeamName());
-        editor.putString("team_color", user.getTeamColor());
+        editor.putInt("money", user.getMoney());
         editor.putBoolean("is_first_launch", false);
         editor.apply();
     }

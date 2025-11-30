@@ -8,6 +8,7 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [x] Implémenter la logique de sélection d'équipe lors du premier lancement (Onboarding).
 - [x] Implémenter la contrainte d'équilibre des équipes : un joueur ne peut rejoindre une équipe que si elle n'est pas complète (vérification côté serveur/Firestore).
 - [x] Mettre à jour l'interface de sélection d'équipe (Onboarding) pour afficher le nombre de places restantes pour chaque équipe.
+- [x] Initialiser la monnaie de l'utilisateur à 0 lors de la création du compte.
 
 ## 3.2. Système de Carte et de Zones
 - [ ] Implémenter l'affichage de la carte basée sur OpenStreetMap.
