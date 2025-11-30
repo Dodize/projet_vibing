@@ -81,16 +81,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         return Math.abs(lat - 37.4219983) < 0.001 && Math.abs(lon - (-122.084)) < 0.001;
     }
     
-    // TEMPORAIRE: Forcer la position au Capitole pour tester
-    private GeoPoint getTestLocation() {
-        return new GeoPoint(43.604652, 1.444209); // Capitole de Toulouse
-    }
-    
-    // TEMPORAIRE: Afficher les coordonnées exactes du Capitole pour comparaison
-    private void logCapitoleCoordinates() {
-        android.util.Log.d("CAPITOLE_DEBUG", "Test location: 43.604652, 1.444209");
-        android.util.Log.d("CAPITOLE_DEBUG", "Expected Capitole coordinates should be very close");
-    }
+
 
     // --- POI Model ---
     private static class PoiItem {
@@ -439,18 +430,19 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     return;
                 }
 
-                // TEMPORAIRE: Forcer la position au Capitole pour tester
-                GeoPoint newLocation = getTestLocation();
-                logCapitoleCoordinates();
-                
-                currentUserLocation = newLocation;
-                mapView.getController().setCenter(newLocation);
-                mapView.getController().setZoom(17.0);
+                // Use real location from locationResult
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    GeoPoint realLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                    currentUserLocation = realLocation;
+                    mapView.getController().setCenter(realLocation);
+                    mapView.getController().setZoom(15.0);
 
-                if (userMarker != null) {
-                    userMarker.setPosition(newLocation);
-                    userMarker.setTitle("Vous êtes ici (TEST - Capitole)");
-                    userMarker.setVisible(true);
+                    if (userMarker != null) {
+                        userMarker.setPosition(realLocation);
+                        userMarker.setTitle("Vous êtes ici");
+                        userMarker.setVisible(true);
+                    }
                 }
                 
                 // Update POI distances when location changes
@@ -547,19 +539,33 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             // Request an initial location update immediately if possible
             fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
-                // TEMPORAIRE: Forcer la position au Capitole pour tester
-                GeoPoint initialLocation = getTestLocation();
-                
-                currentUserLocation = initialLocation;
-                mapView.getController().setCenter(initialLocation);
-                mapView.getController().setZoom(17.0);
-                userMarker.setPosition(initialLocation);
-                userMarker.setTitle("Vous êtes ici (TEST - Capitole)");
-                userMarker.setVisible(true);
-                
-                // Update POI distances with initial location
-                updatePoiDistancesAndList();
-                mapView.invalidate();
+                if (location != null) {
+                    // Use real location
+                    GeoPoint realLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                    currentUserLocation = realLocation;
+                    mapView.getController().setCenter(realLocation);
+                    mapView.getController().setZoom(15.0);
+                    userMarker.setPosition(realLocation);
+                    userMarker.setTitle("Vous êtes ici");
+                    userMarker.setVisible(true);
+                    
+                    // Update POI distances with real location
+                    updatePoiDistancesAndList();
+                    mapView.invalidate();
+                } else {
+                    // Fallback to Toulouse Capitole if no location available
+                    GeoPoint fallbackLocation = new GeoPoint(43.6047, 1.4442);
+                    currentUserLocation = fallbackLocation;
+                    mapView.getController().setCenter(fallbackLocation);
+                    mapView.getController().setZoom(13.0);
+                    userMarker.setPosition(fallbackLocation);
+                    userMarker.setTitle("Position par défaut (Toulouse)");
+                    userMarker.setVisible(true);
+                    
+                    // Update POI distances with fallback location
+                    updatePoiDistancesAndList();
+                    mapView.invalidate();
+                }
             });
         }
     }
