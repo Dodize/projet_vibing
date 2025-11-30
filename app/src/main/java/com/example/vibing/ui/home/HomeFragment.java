@@ -89,6 +89,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         double longitude;
         int score;
         int owningTeam; // 0 = neutral, 1-5 = teams
+        double radius; // Rayon de la zone cliquable en mètres
         Marker marker;
 
         PoiItem(String name, double latitude, double longitude, int score, int owningTeam) {
@@ -97,6 +98,17 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             this.longitude = longitude;
             this.score = score;
             this.owningTeam = owningTeam;
+            this.radius = 50.0; // Rayon par défaut de 50 mètres
+            this.distance = 0; // Will be calculated
+        }
+        
+        PoiItem(String name, double latitude, double longitude, int score, int owningTeam, double radius) {
+            this.name = name;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.score = score;
+            this.owningTeam = owningTeam;
+            this.radius = radius;
             this.distance = 0; // Will be calculated
         }
     }
@@ -131,7 +143,12 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             // Set click listener
             holder.itemView.setOnClickListener(v -> {
-                navigateToPoiScore(poi);
+                if (isUserInPoiZone(poi)) {
+                    navigateToPoiScore(poi);
+                } else {
+                    String distanceInMeters = String.format("%.0f", poi.distance * 1000); // Convert km to m
+                    Toast.makeText(v.getContext(), "Vous devez être à " + distanceInMeters + "m de " + poi.name + " pour lancer le quiz", Toast.LENGTH_LONG).show();
+                }
             });
         }
 
@@ -167,7 +184,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Convert Firebase POIs to local PoiItems
                 for (Poi poi : pois) {
-                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
+                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam(), poi.getRadius());
                     poiList.add(poiItem);
                 }
                 
@@ -187,7 +204,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     poiMarker.setPosition(poiLocation);
                     poiMarker.setTitle(poi.name);
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
-                    poiMarker.setIcon(getTeamIcon(poi.owningTeam));
+                    
+                    // Check if user is in zone to set appropriate icon
+                    boolean isInZone = isUserInPoiZone(poi);
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone));
+                    
                     poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
                     poiMarker.setOnMarkerClickListener(this);
                     // Increase touch area for easier interaction on mobile
@@ -240,15 +261,34 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId) {
+        return getTeamIcon(teamId, false);
+    }
+    
+    private android.graphics.drawable.Drawable getTeamIcon(int teamId, boolean isInZone) {
         // Create a larger colored circle drawable for team markers
         android.graphics.drawable.ShapeDrawable shape = new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape());
-        shape.getPaint().setColor(getTeamColor(teamId));
-        shape.getPaint().setStrokeWidth(2); // Add border
+        
+        // Use brighter color if in zone, normal color if not
+        int color = isInZone ? getBrightTeamColor(teamId) : getTeamColor(teamId);
+        shape.getPaint().setColor(color);
+        shape.getPaint().setStrokeWidth(isInZone ? 4 : 2); // Thicker border if in zone
         shape.getPaint().setStyle(android.graphics.Paint.Style.FILL_AND_STROKE);
         shape.getPaint().setAntiAlias(true);
-        shape.setIntrinsicWidth(40); // Increased size for better touch target
-        shape.setIntrinsicHeight(40);
+        shape.setIntrinsicWidth(isInZone ? 45 : 40); // Slightly larger if in zone
+        shape.setIntrinsicHeight(isInZone ? 45 : 40);
         return shape;
+    }
+    
+    private int getBrightTeamColor(int teamId) {
+        switch (teamId) {
+            case 0: return 0xFFB0B0B0; // Brighter gray for neutral
+            case 1: return 0xFFFF4444; // Brighter red
+            case 2: return 0xFF4444FF; // Brighter blue
+            case 3: return 0xFF44FF44; // Brighter green
+            case 4: return 0xFFFFFF44; // Brighter yellow
+            case 5: return 0xFFAA44AA; // Brighter purple
+            default: return 0xFFB0B0B0; // Brighter gray
+        }
     }
     
     private void updatePoiDistancesAndList() {
@@ -291,6 +331,12 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             double distanceInMeters = 6371000 * c; // Earth radius in meters
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
+            
+            // Update marker icon based on zone status
+            if (poi.marker != null) {
+                boolean isInZone = isUserInPoiZone(poi);
+                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone));
+            }
         }
         
         // Sort by distance
@@ -586,31 +632,79 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Find the POI associated with this marker
         for (PoiItem poi : poiList) {
             if (poi.marker == marker) {
-                // Hide previous bubble if different marker
-                if (currentSelectedMarker != null && currentSelectedMarker != marker) {
-                    hideInfoBubble();
-                }
-                
-                // Show info bubble for this marker
-                showInfoBubble(marker, poi);
-                
-                // Add visual feedback - briefly enlarge the marker
-                android.graphics.drawable.Drawable originalIcon = marker.getIcon();
-                android.graphics.drawable.Drawable enlargedIcon = getTeamIcon(poi.owningTeam);
-                enlargedIcon.setBounds(-25, -25, 25, 25);
-                marker.setIcon(enlargedIcon);
-                mapView.invalidate();
-                
-                // Reset icon after a short delay
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    marker.setIcon(originalIcon);
+                // Vérifier si le joueur est dans la zone du POI
+                if (isUserInPoiZone(poi)) {
+                    // Hide previous bubble if different marker
+                    if (currentSelectedMarker != null && currentSelectedMarker != marker) {
+                        hideInfoBubble();
+                    }
+                    
+                    // Show info bubble for this marker
+                    showInfoBubble(marker, poi);
+                    
+                    // Add visual feedback - briefly enlarge the marker
+                    android.graphics.drawable.Drawable originalIcon = marker.getIcon();
+                    android.graphics.drawable.Drawable enlargedIcon = getTeamIcon(poi.owningTeam);
+                    enlargedIcon.setBounds(-25, -25, 25, 25);
+                    marker.setIcon(enlargedIcon);
                     mapView.invalidate();
-                }, 200);
-                
-                return true; // Event handled
+                    
+                    // Reset icon after a short delay
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        marker.setIcon(originalIcon);
+                        mapView.invalidate();
+                    }, 200);
+                    
+                    return true; // Event handled
+                } else {
+                    // Joueur hors zone - afficher un message et ne pas lancer le quiz
+                    String distanceText = String.format("%.0f", poi.distance * 1000); // Convert km to m
+                    Toast.makeText(getContext(), "Vous devez être à " + distanceText + "m de " + poi.name + " pour lancer le quiz", Toast.LENGTH_LONG).show();
+                    
+                    // Feedback visuel - marker rouge temporaire
+                    android.graphics.drawable.Drawable originalIcon = marker.getIcon();
+                    android.graphics.drawable.ShapeDrawable redIcon = new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape());
+                    redIcon.getPaint().setColor(0xFFFF0000); // Rouge
+                    redIcon.getPaint().setStrokeWidth(2);
+                    redIcon.getPaint().setStyle(android.graphics.Paint.Style.FILL_AND_STROKE);
+                    redIcon.setIntrinsicWidth(40);
+                    redIcon.setIntrinsicHeight(40);
+                    marker.setIcon(redIcon);
+                    mapView.invalidate();
+                    
+                    // Reset icon après un court délai
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        marker.setIcon(originalIcon);
+                        mapView.invalidate();
+                    }, 500);
+                    
+                    return true; // Event handled (but quiz not launched)
+                }
             }
         }
         return false; // Event not handled
+    }
+    
+    private boolean isUserInPoiZone(PoiItem poi) {
+        if (currentUserLocation == null) {
+            return false;
+        }
+        
+        // Calculer la distance entre l'utilisateur et le POI en mètres
+        double lat1 = Math.toRadians(currentUserLocation.getLatitude());
+        double lon1 = Math.toRadians(currentUserLocation.getLongitude());
+        double lat2 = Math.toRadians(poi.latitude);
+        double lon2 = Math.toRadians(poi.longitude);
+        
+        double dLat = lat2 - lat1;
+        double dLon = lon2 - lon1;
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) + 
+                   Math.cos(lat1) * Math.cos(lat2) * 
+                   Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        double distanceInMeters = 6371000 * c; // Earth radius in meters
+        
+        return distanceInMeters <= poi.radius;
     }
 
     private void setupInfoBubble() {

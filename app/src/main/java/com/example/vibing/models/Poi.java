@@ -9,6 +9,7 @@ public class Poi {
     private int score;
     private int owningTeam; // 0 = neutral, 1-5 = teams
     private String id;
+    private double radius; // Rayon de la zone cliquable en mètres
     
     // For Firestore compatibility - handle both flat and nested location structures
     private Map<String, Object> location;
@@ -28,6 +29,16 @@ public class Poi {
         this.longitude = longitude;
         this.score = score;
         this.owningTeam = owningTeam;
+        this.radius = 50.0; // Rayon par défaut de 50 mètres
+    }
+    
+    public Poi(String name, double latitude, double longitude, int score, int owningTeam, double radius) {
+        this.name = name;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.score = score;
+        this.owningTeam = owningTeam;
+        this.radius = radius;
     }
 
     // Getters and setters
@@ -168,5 +179,20 @@ public class Poi {
 
     public void setId(String id) {
         this.id = id;
+    }
+    
+    public double getRadius() {
+        // Try raw data map first
+        if (rawData != null && rawData.containsKey("radius")) {
+            Object radiusObj = rawData.get("radius");
+            if (radiusObj instanceof Number) {
+                return ((Number) radiusObj).doubleValue();
+            }
+        }
+        return radius;
+    }
+    
+    public void setRadius(double radius) {
+        this.radius = radius;
     }
 }
