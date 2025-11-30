@@ -53,8 +53,7 @@ public class TeamSelectionActivity extends AppCompatActivity {
         loadTeams();
         
         continueButton.setOnClickListener(v -> handleContinue());
-        continueButton.setEnabled(false);
-        continueButton.setAlpha(0.5f);
+        updateContinueButtonState();
         
         usernameEditText.addTextChangedListener(new android.text.TextWatcher() {
             @Override
@@ -70,19 +69,23 @@ public class TeamSelectionActivity extends AppCompatActivity {
         });
     }
 
-    private void setupRecyclerView() {
+private void setupRecyclerView() {
         teamList = new ArrayList<>();
         teamAdapter = new TeamSelectionAdapter(teamList, team -> {
-            selectedTeam = team;
-            teamAdapter.setSelectedTeam(team);
-            updateContinueButtonState();
+            if (canJoinTeam(team)) {
+                selectedTeam = team;
+                teamAdapter.setSelectedTeam(team);
+                updateContinueButtonState();
+            } else {
+                Toast.makeText(this, "Cette équipe est complète ou ne respecte pas l'équilibre", Toast.LENGTH_SHORT).show();
+            }
         });
         
         teamsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         teamsRecyclerView.setAdapter(teamAdapter);
     }
 
-    private void loadTeams() {
+private void loadTeams() {
         progressBar.setVisibility(View.VISIBLE);
         
         db.collection("teams")
@@ -94,11 +97,59 @@ public class TeamSelectionActivity extends AppCompatActivity {
                         team.setId(document.getId());
                         teamList.add(team);
                     }
-                    teamAdapter.notifyDataSetChanged();
-                    progressBar.setVisibility(View.GONE);
+                    loadTeamMemberCounts();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Erreur lors du chargement des équipes: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    progressBar.setVisibility(View.GONE);
+                });
+    }
+
+    private void loadTeamMemberCounts() {
+        if (teamList.isEmpty()) {
+            progressBar.setVisibility(View.GONE);
+            return;
+        }
+
+        // Compter le nombre total de joueurs
+        db.collection("users")
+                .get()
+                .addOnSuccessListener(userSnapshots -> {
+                    int totalPlayers = userSnapshots.size();
+                    int totalPlayersWithNewUser = totalPlayers + 1;
+                    
+                    // Utiliser un compteur pour savoir quand toutes les équipes ont été traitées
+                    final int[] teamsProcessed = {0};
+                    
+                    // Compter les membres par équipe
+                    for (Team team : teamList) {
+                        final String teamId = team.getId();
+                        db.collection("users")
+                                .whereEqualTo("teamId", teamId)
+                                .get()
+                                .addOnSuccessListener(teamUserSnapshots -> {
+                                    team.setMemberCount(teamUserSnapshots.size());
+                                    teamsProcessed[0]++;
+                                    
+                                    // Mettre à jour l'adapter uniquement quand toutes les équipes ont été traitées
+                                    if (teamsProcessed[0] == teamList.size()) {
+                                        teamAdapter.setTotalPlayers(totalPlayersWithNewUser);
+                                        teamAdapter.notifyDataSetChanged();
+                                        progressBar.setVisibility(View.GONE);
+                                    }
+                                })
+                                .addOnFailureListener(e -> {
+                                    teamsProcessed[0]++;
+                                    if (teamsProcessed[0] == teamList.size()) {
+                                        teamAdapter.setTotalPlayers(totalPlayersWithNewUser);
+                                        teamAdapter.notifyDataSetChanged();
+                                        progressBar.setVisibility(View.GONE);
+                                    }
+                                });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Erreur lors du chargement des joueurs: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     progressBar.setVisibility(View.GONE);
                 });
     }
@@ -123,13 +174,20 @@ public class TeamSelectionActivity extends AppCompatActivity {
         String username = usernameEditText.getText().toString().trim();
         boolean isValid = !username.isEmpty() && selectedTeam != null;
         continueButton.setEnabled(isValid);
-        continueButton.setAlpha(isValid ? 1.0f : 0.5f);
+        
+        if (isValid) {
+            continueButton.setAlpha(1.0f);
+            continueButton.setBackgroundColor(getResources().getColor(android.R.color.holo_purple, null));
+        } else {
+            continueButton.setAlpha(0.3f);
+            continueButton.setBackgroundColor(getResources().getColor(android.R.color.darker_gray, null));
+        }
     }
 
     private void saveUserToDatabase(String username, Team team) {
         progressBar.setVisibility(View.VISIBLE);
         
-        User user = new User(username, team.getId(), team.getName(), team.getColor());
+        User user = new User(username, team.getId(), team.getName());
         user.setId(UUID.randomUUID().toString());
         
         db.collection("users")
@@ -150,14 +208,32 @@ public class TeamSelectionActivity extends AppCompatActivity {
                 });
     }
 
-    private void saveUserPreferences(User user) {
+private void saveUserPreferences(User user) {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString("user_id", user.getId());
         editor.putString("username", user.getUsername());
         editor.putString("team_id", user.getTeamId());
         editor.putString("team_name", user.getTeamName());
-        editor.putString("team_color", user.getTeamColor());
+        editor.putInt("money", user.getMoney());
         editor.putBoolean("is_first_launch", false);
         editor.apply();
+    }
+
+    private boolean canJoinTeam(Team team) {
+        if (teamList.isEmpty()) return true;
+        
+        int totalTeams = teamList.size();
+        int currentTotalPlayers = 0;
+        
+        // Calculer le nombre total de joueurs actuel
+        for (Team t : teamList) {
+            currentTotalPlayers += t.getMemberCount();
+        }
+        
+        // Utiliser la même logique que l'affichage : totalPlayers + 1 pour le nouvel utilisateur
+        int totalPlayersWithNewUser = currentTotalPlayers + 1;
+        
+        // Utiliser la même méthode que l'affichage pour la cohérence
+        return team.getRemainingSlots(totalTeams, totalPlayersWithNewUser) > 0;
     }
 }

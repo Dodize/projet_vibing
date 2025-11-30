@@ -5,17 +5,17 @@ public class User {
     private String username;
     private String teamId;
     private String teamName;
-    private String teamColor;
+private int money;
     private long createdAt;
 
     public User() {
     }
 
-    public User(String username, String teamId, String teamName, String teamColor) {
+public User(String username, String teamId, String teamName) {
         this.username = username;
         this.teamId = teamId;
         this.teamName = teamName;
-        this.teamColor = teamColor;
+        this.money = 0;
         this.createdAt = System.currentTimeMillis();
     }
 
@@ -51,12 +51,12 @@ public class User {
         this.teamName = teamName;
     }
 
-    public String getTeamColor() {
-        return teamColor;
+public int getMoney() {
+        return money;
     }
 
-    public void setTeamColor(String teamColor) {
-        this.teamColor = teamColor;
+    public void setMoney(int money) {
+        this.money = money;
     }
 
     public long getCreatedAt() {

@@ -18,7 +18,6 @@ Cette collection contient toutes les équipes disponibles pour la sélection dan
 - team_2: Les Explorateurs (Bleu #0000FF)  
 - team_3: Les Stratèges (Vert #00FF00)
 - team_4: Les Gardiens (Orange #FFA500)
-- team_5: Les Innovateurs (Violet #800080)
 
 ## 2. Collection : `users`
 
@@ -27,10 +26,12 @@ Cette collection stocke les données spécifiques à chaque utilisateur, indexé
 | Champ | Type | Description | Valeur Exemple |
 | :--- | :--- | :--- | :--- |
 | **Document ID** | String | UID de l'utilisateur Firebase | "user_abc123" |
-| `userId` | String | Identifiant textuel de l'utilisateur | "user_abc123" |
-| `pseudo` | String | Pseudonyme de l'utilisateur | "AlphaStriker" |
+| `id` | String | Identifiant textuel de l'utilisateur | "user_abc123" |
+| `username` | String | Pseudonyme de l'utilisateur | "AlphaStriker" |
 | `teamId` | String | ID de l'équipe sélectionnée | "team_1" |
-| `currency` | Number | Monnaie de l'utilisateur | 500 |
+| `teamName` | String | Nom de l'équipe de l'utilisateur | "Les Conquérants" |
+| `money` | Number | Monnaie de l'utilisateur | 500 |
+| `createdAt` | Timestamp | Date de création du compte | Timestamp Firebase |
 
 ## 3. Collection : `pois` (Points d'Intérêt)
 

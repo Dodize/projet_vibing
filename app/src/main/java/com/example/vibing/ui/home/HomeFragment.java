@@ -1,6 +1,7 @@
 package com.example.vibing.ui.home;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -122,7 +123,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         public void onBindViewHolder(@NonNull PoiViewHolder holder, int position) {
             PoiItem poi = poiList.get(position);
             
-            Toast.makeText(holder.itemView.getContext(), "Binding: " + poi.name + " to " + holder.poiNameTextView.getClass().getSimpleName(), Toast.LENGTH_SHORT).show();
+
             
             holder.poiNameTextView.setText(poi.name);
             // Format distance for display
@@ -153,7 +154,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 poiNameTextView = itemView.findViewById(R.id.poiNameTextView);
                 poiDistanceTextView = itemView.findViewById(R.id.poiDistanceTextView);
                 
-                Toast.makeText(itemView.getContext(), "ViewHolder: nameView=" + (poiNameTextView != null ? "found" : "null") + ", distanceView=" + (poiDistanceTextView != null ? "found" : "null"), Toast.LENGTH_LONG).show();
+
             }
         }
     }
@@ -297,12 +298,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         poiList.sort((a, b) -> Double.compare(a.distance, b.distance));
         
         // Update adapter with new data
-        Toast.makeText(getContext(), "updatePoisDisplay: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
-        
         // Create new adapter with fresh data to ensure it's properly updated
         poiListAdapter = new PoiListAdapter(new ArrayList<>(poiList));
         poiRecyclerView.setAdapter(poiListAdapter);
-        Toast.makeText(getContext(), "New adapter created and set", Toast.LENGTH_SHORT).show();
         
         mapView.invalidate();
     }
@@ -314,6 +312,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
+
+        // Display user information from SharedPreferences
+        displayUserInfo();
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
@@ -547,13 +548,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             startLocationUpdates();
         }
         // Refresh POI list when returning to fragment
-        Toast.makeText(getContext(), "onResume: poiList size = " + (poiList != null ? poiList.size() : "null"), Toast.LENGTH_SHORT).show();
-        Toast.makeText(getContext(), "onResume: adapter = " + (poiListAdapter != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
-        Toast.makeText(getContext(), "onResume: recyclerView adapter = " + (poiRecyclerView != null && poiRecyclerView.getAdapter() != null ? "not null" : "null"), Toast.LENGTH_SHORT).show();
-        
         if (poiRecyclerView != null && poiRecyclerView.getAdapter() != null) {
             poiRecyclerView.getAdapter().notifyDataSetChanged();
-            Toast.makeText(getContext(), "onResume: notifyDataSetChanged called", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -712,6 +708,29 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Navigate to PoiScoreFragment
         NavController navController = Navigation.findNavController(requireView());
         navController.navigate(R.id.action_homeFragment_to_poiScoreFragment, bundle);
+    }
+    
+    private void displayUserInfo() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        String username = prefs.getString("username", "Joueur");
+        String teamName = prefs.getString("team_name", "Équipe inconnue");
+        int money = prefs.getInt("money", 0);
+        
+        TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
+        TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
+        TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        
+        if (usernameTextView != null) {
+            usernameTextView.setText(username);
+        }
+        
+        if (teamTextView != null) {
+            teamTextView.setText("Équipe: " + teamName);
+        }
+        
+        if (moneyTextView != null) {
+            moneyTextView.setText("Argent: " + money + "€");
+        }
     }
     
 
