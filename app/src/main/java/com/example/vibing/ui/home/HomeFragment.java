@@ -623,13 +623,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             if (poi.marker == marker) {
                 // Vérifier si le joueur est dans la zone du POI
                 if (isUserInPoiZone(poi)) {
-                    // Hide previous bubble if different marker
-                    if (currentSelectedMarker != null && currentSelectedMarker != marker) {
-                        hideInfoBubble();
-                    }
-                    
-                    // Show info bubble for this marker
-                    showInfoBubble(marker, poi);
+                    // Naviguer vers PoiScoreFragment comme dans la liste
+                    navigateToPoiScore(poi);
                     
                     // Add visual feedback - briefly enlarge the marker
                     android.graphics.drawable.Drawable originalIcon = marker.getIcon();
