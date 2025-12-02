@@ -5,6 +5,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import androidx.appcompat.widget.AppCompatButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -20,14 +22,21 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
     private List<Team> teamList;
     private Team selectedTeam;
     private OnTeamClickListener listener;
+    private int totalPlayers;
 
     public interface OnTeamClickListener {
         void onTeamClick(Team team);
     }
 
-    public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
+public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
         this.teamList = teamList;
         this.listener = listener;
+        this.totalPlayers = 0;
+    }
+
+    public void setTotalPlayers(int totalPlayers) {
+        this.totalPlayers = totalPlayers;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -53,39 +62,83 @@ public class TeamSelectionAdapter extends RecyclerView.Adapter<TeamSelectionAdap
         notifyDataSetChanged();
     }
 
-    class TeamViewHolder extends RecyclerView.ViewHolder {
-        private Button teamButton;
+class TeamViewHolder extends RecyclerView.ViewHolder {
+        private AppCompatButton teamButton;
+        private TextView teamInfoText;
 
         public TeamViewHolder(@NonNull View itemView) {
             super(itemView);
             teamButton = itemView.findViewById(R.id.teamButton);
+            teamInfoText = itemView.findViewById(R.id.teamInfoText);
         }
 
-        public void bind(Team team) {
+public void bind(Team team) {
             teamButton.setText(team.getName());
             
+            String teamColor = "#2196F3"; // Couleur par défaut
             try {
                 if (team.getColor() != null && !team.getColor().isEmpty()) {
-                    teamButton.setBackgroundColor(Color.parseColor(team.getColor()));
+                    teamColor = team.getColor();
                 } else if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
-                    teamButton.setBackgroundColor(Color.parseColor(team.getColorHex()));
-                } else {
-                    teamButton.setBackgroundColor(Color.parseColor("#2196F3"));
+                    teamColor = team.getColorHex();
                 }
-            } catch (IllegalArgumentException e) {
-                teamButton.setBackgroundColor(Color.parseColor("#2196F3"));
+            } catch (Exception e) {
+                teamColor = "#2196F3";
+            }
+            
+            // Mettre à jour le texte d'information
+            if (totalPlayers > 0) {
+                int remainingSlots = team.getRemainingSlots(teamList.size(), totalPlayers);
+                String infoText;
+                if (remainingSlots == Integer.MAX_VALUE) {
+                    infoText = "Places illimitées";
+                } else if (remainingSlots > 0) {
+                    infoText = remainingSlots + " place(s) restante(s)";
+                } else {
+                    infoText = "Équipe complète";
+                }
+                teamInfoText.setText(infoText);
+                
+                // Désactiver le bouton si l'équipe est complète
+                teamButton.setEnabled(remainingSlots > 0);
+                if (remainingSlots == 0) {
+                    teamButton.setAlpha(0.5f);
+                } else {
+                    teamButton.setAlpha(1.0f);
+                }
+            } else {
+                teamInfoText.setText("Chargement...");
+                teamButton.setEnabled(true);
+                teamButton.setAlpha(1.0f);
             }
             
             if (selectedTeam != null && selectedTeam.getId().equals(team.getId())) {
+                // Sélectionné : fond couleur équipe, texte blanc
                 teamButton.setSelected(true);
-                teamButton.setAlpha(1.0f);
+                teamButton.setTextColor(Color.WHITE);
+                
+                // Créer un background avec la couleur de l'équipe
+                android.graphics.drawable.GradientDrawable selectedDrawable = new android.graphics.drawable.GradientDrawable();
+                selectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                selectedDrawable.setCornerRadius(8f);
+                selectedDrawable.setColor(Color.parseColor(teamColor));
+                teamButton.setBackground(selectedDrawable);
             } else {
+                // Non sélectionné : fond blanc, contour couleur équipe, texte couleur équipe
                 teamButton.setSelected(false);
-                teamButton.setAlpha(0.8f);
+                teamButton.setTextColor(Color.parseColor(teamColor));
+                
+                // Créer un background blanc avec contour couleur équipe
+                android.graphics.drawable.GradientDrawable unselectedDrawable = new android.graphics.drawable.GradientDrawable();
+                unselectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                unselectedDrawable.setCornerRadius(8f);
+                unselectedDrawable.setColor(Color.WHITE);
+                unselectedDrawable.setStroke(4, Color.parseColor(teamColor));
+                teamButton.setBackground(unselectedDrawable);
             }
             
             teamButton.setOnClickListener(v -> {
-                if (listener != null) {
+                if (listener != null && teamButton.isEnabled()) {
                     listener.onTeamClick(team);
                 }
             });
