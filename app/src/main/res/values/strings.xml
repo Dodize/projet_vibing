@@ -1,9 +1,7 @@
 <resources>
     <string name="app_name">Vibing</string>
 
-    <string name="title_score">Score</string>
-    <string name="money_score_label">Argent: %d</string>
-    <string name="voice_commands_list">• \"Je dépose les armes\" - Bonus 25€\n• \"Je capture la zone\" - Quiz pour capturer la zone</string>
+    
     <string name="title_home">Vibing</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>

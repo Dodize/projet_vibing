@@ -213,6 +213,12 @@ private void saveUserPreferences(User user) {
         editor.putString("user_id", user.getId());
         editor.putString("username", user.getUsername());
         editor.putString("team_id", user.getTeamId());
+        // Also save as integer for easier access
+        try {
+            editor.putInt("team_id_int", Integer.parseInt(user.getTeamId()));
+        } catch (NumberFormatException e) {
+            editor.putInt("team_id_int", 1); // Default fallback
+        }
         editor.putString("team_name", user.getTeamName());
         editor.putInt("money", user.getMoney());
         editor.putBoolean("is_first_launch", false);

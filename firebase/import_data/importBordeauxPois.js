@@ -40,7 +40,7 @@ const bordeauxPoisData = {
     "name": "Musée d'Aquitaine",
     "location": { "latitude": 44.8378, "longitude": -0.5792 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_musee_beaux_arts": {
@@ -109,7 +109,7 @@ const bordeauxPoisData = {
     "name": "Cathédrale Saint-André",
     "location": { "latitude": 44.8378, "longitude": -0.5792 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_basilique_saint_seurin": {
@@ -178,7 +178,7 @@ const bordeauxPoisData = {
     "name": "Grand Théâtre de Bordeaux",
     "location": { "latitude": 44.8378, "longitude": -0.5792 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   

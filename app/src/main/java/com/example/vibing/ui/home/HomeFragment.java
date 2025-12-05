@@ -85,6 +85,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     // --- POI Model ---
     private static class PoiItem {
         String name;
+        String id; // Firebase document ID
         double distance;
         double latitude;
         double longitude;
@@ -92,13 +93,14 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         int owningTeam; // 0 = neutral, 1-5 = teams
         Marker marker;
 
-        PoiItem(String name, double latitude, double longitude, int score, int owningTeam) {
+PoiItem(String name, String id, double latitude, double longitude, int score, int owningTeam) {
             this.name = name;
+            this.id = id;
             this.latitude = latitude;
             this.longitude = longitude;
             this.score = score;
             this.owningTeam = owningTeam;
-            this.distance = 0; // Will be calculated
+            this.distance = 0; // Will be calculated later
         }
     }
 
@@ -168,7 +170,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Convert Firebase POIs to local PoiItems
                 for (Poi poi : pois) {
-                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
+                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getId(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
                     poiList.add(poiItem);
                 }
                 
@@ -219,11 +221,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private String getTeamName(int teamId) {
         switch (teamId) {
             case 0: return "Neutre";
-            case 1: return "Équipe Rouge";
-            case 2: return "Équipe Bleue";
-            case 3: return "Équipe Verte";
-            case 4: return "Équipe Jaune";
-            case 5: return "Équipe Violette";
+            case 1: return "Les Explorateurs";
+            case 2: return "Les Aventuriers";
+            case 3: return "Les Voyageurs";
+            case 4: return "Les Découvreurs";
+            case 5: return "Les Pionniers";
             default: return "Inconnue";
         }
     }
@@ -700,10 +702,26 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Create bundle with POI data
         Bundle bundle = new Bundle();
         bundle.putString("poiName", poi.name);
+        bundle.putString("poiId", poi.id); // Pass the actual POI ID from Firebase
         bundle.putFloat("poiLatitude", (float) poi.latitude);
         bundle.putFloat("poiLongitude", (float) poi.longitude);
         bundle.putInt("poiScore", poi.score);
         bundle.putInt("poiOwningTeam", poi.owningTeam);
+        
+        // Get current user's team ID
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        // Try to get the integer version first, fallback to string parsing
+        int userTeamId = prefs.getInt("team_id_int", -1);
+        if (userTeamId == -1) {
+            String teamIdString = prefs.getString("team_id", "1"); // Default to team 1 if not set
+            try {
+                userTeamId = Integer.parseInt(teamIdString);
+            } catch (NumberFormatException e) {
+                android.util.Log.e("HOME_FRAGMENT", "Error parsing team_id: " + teamIdString, e);
+                userTeamId = 1; // Default fallback
+            }
+        }
+        bundle.putInt("userTeamId", userTeamId);
         
         // Navigate to PoiScoreFragment
         NavController navController = Navigation.findNavController(requireView());

@@ -31,7 +31,7 @@ const marseillePoisData = {
     "name": "Château d'If",
     "location": { "latitude": 43.2799, "longitude": 5.3216 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   
@@ -141,7 +141,7 @@ const marseillePoisData = {
     "name": "Stade Vélodrome",
     "location": { "latitude": 43.2698, "longitude": 5.3959 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_palais_des_sports": {

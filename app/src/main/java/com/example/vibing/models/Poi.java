@@ -14,6 +14,7 @@ public class Poi {
     private Map<String, Object> location;
     private Integer currentScore;
     private String ownerTeamId;
+    private java.util.Date captureTime;
     
     // Raw data map for manual extraction
     private Map<String, Object> rawData;
@@ -168,5 +169,20 @@ public class Poi {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public java.util.Date getCaptureTime() {
+        // Try raw data map first for captureTime
+        if (rawData != null && rawData.containsKey("captureTime")) {
+            Object captureObj = rawData.get("captureTime");
+            if (captureObj instanceof java.util.Date) {
+                return (java.util.Date) captureObj;
+            }
+        }
+        return captureTime;
+    }
+
+    public void setCaptureTime(java.util.Date captureTime) {
+        this.captureTime = captureTime;
     }
 }

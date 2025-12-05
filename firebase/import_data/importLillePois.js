@@ -155,7 +155,7 @@ const lillePoisData = {
     "name": "Stade Pierre-Mauroy",
     "location": { "latitude": 50.6128, "longitude": 3.0132 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_piscine_olympique": {

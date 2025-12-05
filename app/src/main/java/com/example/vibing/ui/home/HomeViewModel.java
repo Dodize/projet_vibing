@@ -64,7 +64,7 @@ public class HomeViewModel extends ViewModel {
         capitole.setName("Capitole de Toulouse");
         capitole.setLatitude(43.6047);
         capitole.setLongitude(1.4442);
-        capitole.setScore(500);
+        capitole.setScore(100);
         capitole.setOwningTeam(0);
         testPois.add(capitole);
         
@@ -73,7 +73,7 @@ public class HomeViewModel extends ViewModel {
         zenith.setName("Zénith de Toulouse");
         zenith.setLatitude(43.5819);
         zenith.setLongitude(1.4337);
-        zenith.setScore(250);
+        zenith.setScore(100);
         zenith.setOwningTeam(0);
         testPois.add(zenith);
         
@@ -82,7 +82,7 @@ public class HomeViewModel extends ViewModel {
         basilique.setName("Basilique Saint-Sernin");
         basilique.setLatitude(43.6082);
         basilique.setLongitude(1.4408);
-        basilique.setScore(600);
+        basilique.setScore(100);
         basilique.setOwningTeam(0);
         testPois.add(basilique);
         
@@ -91,7 +91,7 @@ public class HomeViewModel extends ViewModel {
         pontNeuf.setName("Pont Neuf de Toulouse");
         pontNeuf.setLatitude(43.6032);
         pontNeuf.setLongitude(1.4302);
-        pontNeuf.setScore(350);
+        pontNeuf.setScore(100);
         pontNeuf.setOwningTeam(0);
         testPois.add(pontNeuf);
         
@@ -131,18 +131,8 @@ public class HomeViewModel extends ViewModel {
             }
         }
         
-        // Extract score
-        if (data.containsKey("currentScore")) {
-            Object score = data.get("currentScore");
-            if (score instanceof Number) {
-                poi.setScore(((Number) score).intValue());
-            }
-        } else if (data.containsKey("score")) {
-            Object score = data.get("score");
-            if (score instanceof Number) {
-                poi.setScore(((Number) score).intValue());
-            }
-        }
+        // Force score to 100 for all POIs
+        poi.setScore(100);
         
         // Extract owning team
         if (data.containsKey("ownerTeamId")) {

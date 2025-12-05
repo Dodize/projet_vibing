@@ -37,7 +37,7 @@ import java.util.Locale;
 public class PoiScoreFragment extends Fragment {
 
     private FragmentPoiScoreBinding binding;
-    private ScoreViewModel scoreViewModel;
+    private PoiScoreViewModel poiScoreViewModel;
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
 
@@ -45,14 +45,16 @@ public class PoiScoreFragment extends Fragment {
     
     // POI data passed from HomeFragment
     private String poiName;
-    private double poiLatitude;
-    private double poiLongitude;
+    private String poiId; // Actual POI ID from Firebase
+    private float poiLatitude;
+    private float poiLongitude;
     private int poiScore;
     private int poiOwningTeam;
+    private int userTeamId; // Current user's team
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        scoreViewModel = new ViewModelProvider(this).get(ScoreViewModel.class);
+        poiScoreViewModel = new ViewModelProvider(this).get(PoiScoreViewModel.class);
 
         binding = FragmentPoiScoreBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
@@ -60,31 +62,62 @@ public class PoiScoreFragment extends Fragment {
         // Enable back button in toolbar
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        // Get POI data from arguments
+// Get POI data from arguments
         Bundle args = getArguments();
         if (args != null) {
             poiName = args.getString("poiName");
-            poiLatitude = args.getDouble("poiLatitude");
-            poiLongitude = args.getDouble("poiLongitude");
+            poiId = args.getString("poiId"); // Use actual POI ID from Firebase
+            poiLatitude = args.getFloat("poiLatitude");
+            poiLongitude = args.getFloat("poiLongitude");
             poiScore = args.getInt("poiScore");
             poiOwningTeam = args.getInt("poiOwningTeam");
+            userTeamId = args.getInt("userTeamId", 1); // Default to team 1 if not provided
             
-            // Initialize score with the actual POI score from database
-            scoreViewModel.setZoneScore(poiScore);
+            // Initialize POI score with actual POI data
+            try {
+                android.util.Log.d("POI_SCORE", "Initializing POI: " + poiName + " with ID: " + poiId + " and score: " + poiScore + " owned by team: " + poiOwningTeam);
+                poiScoreViewModel.initializePoi(poiId, poiName, poiScore);
+                // ALWAYS load from Firebase to get real-time score
+                poiScoreViewModel.loadFromFirebase();
+            } catch (Exception e) {
+                android.util.Log.e("POI_SCORE", "Error initializing POI: " + e.getMessage());
+                // Set default values if initialization fails
+                if (poiScoreViewModel.getCurrentScore().getValue() == null) {
+                    poiScoreViewModel.setScore(100);
+                }
+            }
+        } else {
+            android.util.Log.e("POI_SCORE", "Arguments bundle is null");
+            // Set default values
+            poiName = "Zone inconnue";
+            poiId = "unknown_zone";
+            poiScore = 100;
+            poiOwningTeam = 0;
+            userTeamId = 1;
+            if (poiScoreViewModel.getCurrentScore().getValue() == null) {
+                poiScoreViewModel.setScore(100);
+            }
         }
 
         final TextView textView = binding.textScore;
-        scoreViewModel.getScore().observe(getViewLifecycleOwner(), score -> {
-            textView.setText(poiName + "\nScore de la zone: " + score);
+        // Observe score changes
+        poiScoreViewModel.getCurrentScore().observe(getViewLifecycleOwner(), score -> {
+            updateDisplayText(score, null);
+        });
+        
+        // Observe team changes
+        poiScoreViewModel.getOwningTeam().observe(getViewLifecycleOwner(), team -> {
+            updateDisplayText(null, team);
         });
 
         final TextView moneyTextView = binding.textMoneyScore;
-        scoreViewModel.getMoneyScore().observe(getViewLifecycleOwner(), money -> {
-            moneyTextView.setText("Argent: " + money + "€");
+        poiScoreViewModel.getMoneyScore().observe(getViewLifecycleOwner(), money -> {
+            if (getContext() != null && moneyTextView != null) {
+                moneyTextView.setText("Argent: " + (money != null ? money : 0) + "€");
+            }
         });
 
-        // Use POI ID as zone identifier
-        String currentZoneId = poiName != null ? poiName.replaceAll("\\s+", "_").toLowerCase() : "unknown_zone";
+
 
         Button recordVoiceButton = binding.buttonRecordVoice;
         recordVoiceButton.setOnClickListener(v -> startVoiceRecognition());
@@ -150,7 +183,7 @@ public class PoiScoreFragment extends Fragment {
     private void handleVoiceCommand(String command) {
         // This is where you'll recognize specific phrases
         if (command.contains("je dépose les armes")) {
-            scoreViewModel.addMoneyBonus(25); // Bonus de 25€ pour déposer les armes
+            poiScoreViewModel.addMoneyBonus(25); // Bonus de 25€ pour déposer les armes
             Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
         } else if (command.contains("je capture la zone")) {
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
@@ -175,9 +208,7 @@ public class PoiScoreFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // When the fragment becomes visible, update the score based on time elapsed
-        String currentZoneId = poiName != null ? poiName.replaceAll("\\s+", "_").toLowerCase() : "unknown_zone";
-        scoreViewModel.updateScoreBasedOnTime(currentZoneId);
+        // Score is automatically updated by PoiScoreViewModel
     }
 
     private void showQuizDialog() {
@@ -265,12 +296,26 @@ public class PoiScoreFragment extends Fragment {
     }
 
     private void checkQuizResult(int quizScore) {
-        Integer currentZoneScore = scoreViewModel.getScore().getValue();
-        if (currentZoneScore != null && quizScore > currentZoneScore) {
-            scoreViewModel.setZoneScore(quizScore);
-            Toast.makeText(getContext(), "Félicitations! Vous avez capturé la zone " + poiName + " avec un score de " + quizScore + "!", Toast.LENGTH_LONG).show();
-        } else {
-            Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + poiName + ".", Toast.LENGTH_LONG).show();
+        try {
+            Integer currentZoneScore = poiScoreViewModel.getCurrentScore().getValue();
+            if (currentZoneScore != null && quizScore > currentZoneScore) {
+                // Succès : le score utilisateur est supérieur au score de la zone
+                poiOwningTeam = userTeamId; // Update local owning team
+                poiScoreViewModel.captureZone(quizScore, userTeamId);
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!", Toast.LENGTH_LONG).show();
+                }
+            } else {
+                // Échec : le score utilisateur est inférieur ou égal au score de la zone
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + (poiName != null ? poiName : "inconnue") + ".", Toast.LENGTH_LONG).show();
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("POI_SCORE", "Error in checkQuizResult: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Une erreur est survenue lors du traitement du quiz", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -301,6 +346,57 @@ public class PoiScoreFragment extends Fragment {
             handleVoiceCommand(command.toLowerCase());
         });
         builder.show();
+    }
+
+private String getTeamDisplayText(int teamId) {
+        try {
+            switch (teamId) {
+                case 0:
+                    return "Zone neutre";
+                case 1:
+                    return "Équipe: Les Explorateurs 🔵";
+                case 2:
+                    return "Équipe: Les Aventuriers 🟢";
+                case 3:
+                    return "Équipe: Les Voyageurs 🟡";
+                case 4:
+                    return "Équipe: Les Découvreurs 🔴";
+                case 5:
+                    return "Équipe: Les Pionniers 🟣";
+                default:
+                    return "Zone neutre";
+            }
+        } catch (Exception e) {
+            android.util.Log.e("POI_SCORE", "Error in getTeamDisplayText: " + e.getMessage());
+            return "Zone neutre";
+        }
+    }
+    
+    
+    
+    private void updateDisplayText(Integer score, Integer team) {
+        if (getContext() == null || binding == null || binding.textScore == null) {
+            return;
+        }
+        
+        // Get current values if not provided
+        if (score == null) {
+            score = poiScoreViewModel.getCurrentScore().getValue();
+        }
+        if (team == null) {
+            team = poiScoreViewModel.getOwningTeam().getValue();
+        }
+        
+        // Update local owning team for quiz result
+        if (team != null) {
+            poiOwningTeam = team;
+        }
+        
+        String displayText = poiName != null ? poiName : "Zone inconnue";
+        displayText += "\n" + getTeamDisplayText(team != null ? team : 0);
+        displayText += "\nScore de la zone: " + (score != null ? score : 0);
+        
+        binding.textScore.setText(displayText);
     }
 
     @Override

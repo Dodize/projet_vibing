@@ -40,7 +40,7 @@ const lyonPoisData = {
     "name": "Musée des Beaux-Arts de Lyon",
     "location": { "latitude": 45.7678, "longitude": 4.8466 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_musee_gallo_romain": {
