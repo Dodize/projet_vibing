@@ -1,10 +1,12 @@
 package com.example.vibing.repository;
 
 import android.content.Context;
+import android.text.Html;
 import android.util.Log;
 import com.example.vibing.api.OpenTriviaApiService;
 import com.example.vibing.models.OpenTriviaResponse;
 import com.example.vibing.models.QuizQuestion;
+import com.example.vibing.services.MyMemoryTranslationService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class QuizRepository {
     private static final String TAG = "QuizRepository";
     private OpenTriviaApiService openTriviaApiService;
+    private MyMemoryTranslationService translationService;
     private Context context;
 
     public QuizRepository(Context context) {
@@ -33,6 +36,7 @@ public class QuizRepository {
                 .build();
         
         openTriviaApiService = retrofit.create(OpenTriviaApiService.class);
+        translationService = new MyMemoryTranslationService(context);
     }
 
     public interface QuizCallback {
@@ -43,42 +47,9 @@ public class QuizRepository {
     public void getQuizQuestions(QuizCallback callback) {
         Log.i(TAG, "Fetching questions from Open Trivia Database API");
         
-        // Essayer d'abord en français
-        Call<OpenTriviaResponse> call = openTriviaApiService.getRandomQuestions(10, "fr");
-        
-        call.enqueue(new Callback<OpenTriviaResponse>() {
-            @Override
-            public void onResponse(Call<OpenTriviaResponse> call, Response<OpenTriviaResponse> response) {
-                Log.i(TAG, "Open Trivia API response code: " + response.code());
-                Log.i(TAG, "Open Trivia API response successful: " + response.isSuccessful());
-                
-                if (response.isSuccessful() && response.body() != null) {
-                    OpenTriviaResponse openTriviaResponse = response.body();
-                    Log.i(TAG, "Open Trivia response code: " + openTriviaResponse.getResponse_code());
-                    
-                    if (openTriviaResponse.getResponse_code() == 0 && openTriviaResponse.getResults() != null) {
-                        List<OpenTriviaResponse.OpenTriviaQuestion> triviaQuestions = openTriviaResponse.getResults();
-                        Log.i(TAG, "Open Trivia questions count: " + triviaQuestions.size());
-                        
-                        if (!triviaQuestions.isEmpty()) {
-                            convertOpenTriviaQuestions(triviaQuestions, callback);
-                            return;
-                        }
-                    }
-                }
-                
-                // Si le français échoue, essayer en anglais et traduire
-                Log.i(TAG, "French questions failed, trying English with translation");
-                getEnglishQuestionsAndTranslate(callback);
-            }
-
-            @Override
-            public void onFailure(Call<OpenTriviaResponse> call, Throwable t) {
-                Log.e(TAG, "Open Trivia API network failure: " + t.getMessage(), t);
-                // Essayer les questions locales en dernier recours
-                loadLocalFrenchQuestions(callback);
-            }
-        });
+        // Forcer l'utilisation des questions anglaises avec traduction
+        // car les questions françaises ne sont pas vraiment disponibles
+        getEnglishQuestionsAndTranslate(callback);
     }
 
     private void getEnglishQuestionsAndTranslate(QuizCallback callback) {
@@ -94,9 +65,8 @@ public class QuizRepository {
                         List<OpenTriviaResponse.OpenTriviaQuestion> triviaQuestions = openTriviaResponse.getResults();
                         Log.i(TAG, "English questions loaded, count: " + triviaQuestions.size());
                         
-                        // Pour l'instant, utiliser les questions anglaises telles quelles
-                        // TODO: Ajouter traduction plus tard si nécessaire
-                        convertOpenTriviaQuestions(triviaQuestions, callback);
+                        // Traduire les questions anglaises en français
+                        translateAndConvertQuestions(triviaQuestions, callback);
                         return;
                     }
                 }
@@ -152,6 +122,127 @@ public class QuizRepository {
         
         Log.i(TAG, "Converted " + quizQuestions.size() + " questions successfully");
         callback.onSuccess(quizQuestions);
+    }
+
+    private void translateAndConvertQuestions(List<OpenTriviaResponse.OpenTriviaQuestion> triviaQuestions, QuizCallback callback) {
+        List<QuizQuestion> quizQuestions = new ArrayList<>();
+        int[] translatedCount = {0};
+        int totalCount = triviaQuestions.size();
+
+        for (OpenTriviaResponse.OpenTriviaQuestion triviaQ : triviaQuestions) {
+            QuizQuestion quizQ = new QuizQuestion();
+            quizQ.setId("trivia_" + quizQuestions.size());
+            quizQ.setType(triviaQ.getType());
+            
+            // Convertir la difficulté
+            int difficulty = convertDifficulty(triviaQ.getDifficulty());
+            quizQ.setDifficulty(difficulty);
+
+            // Créer les réponses
+            List<QuizQuestion.Answer> answers = new ArrayList<>();
+            
+            // Ajouter la réponse correcte
+            answers.add(createAnswer("correct_" + quizQuestions.size(), triviaQ.getCorrect_answer(), true));
+            
+            // Ajouter les réponses incorrectes
+            for (int i = 0; i < triviaQ.getIncorrect_answers().size(); i++) {
+                answers.add(createAnswer("wrong_" + quizQuestions.size() + "_" + i, triviaQ.getIncorrect_answers().get(i), false));
+            }
+            
+            // Mélanger les réponses
+            shuffleAnswers(answers);
+            quizQ.setAnswers(answers);
+
+            // Décoder et traduire la question
+            String originalQuestion = decodeHtmlEntities(triviaQ.getQuestion());
+            translationService.translateText(originalQuestion, new MyMemoryTranslationService.TranslationCallback() {
+                @Override
+                public void onSuccess(String translatedText) {
+                    QuizQuestion.Title title = new QuizQuestion.Title();
+                    title.setFr(translatedText);
+                    title.setEn(originalQuestion); // Garder l'original
+                    quizQ.setTitle(title);
+                    
+                    // Traduire les réponses
+                    translateAnswers(quizQ, triviaQ, callback, quizQuestions, translatedCount, totalCount);
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.w(TAG, "Translation failed for question: " + errorMessage);
+                    // Utiliser la question originale si la traduction échoue
+                    QuizQuestion.Title title = new QuizQuestion.Title();
+                    title.setFr(originalQuestion);
+                    title.setEn(originalQuestion);
+                    quizQ.setTitle(title);
+                    
+                    translateAnswers(quizQ, triviaQ, callback, quizQuestions, translatedCount, totalCount);
+                }
+            });
+        }
+    }
+
+    private void translateAnswers(QuizQuestion quizQ, OpenTriviaResponse.OpenTriviaQuestion triviaQ, 
+                                QuizCallback callback, List<QuizQuestion> quizQuestions, 
+                                int[] translatedCount, int totalCount) {
+        
+        List<QuizQuestion.Answer> answers = quizQ.getAnswers();
+        int[] translatedAnswers = {0};
+        int totalAnswers = answers.size();
+
+        // Préparer les textes à traduire
+        String[] textsToTranslate = new String[totalAnswers];
+        MyMemoryTranslationService.TranslationCallback[] callbacks = new MyMemoryTranslationService.TranslationCallback[totalAnswers];
+
+        for (int i = 0; i < totalAnswers; i++) {
+            final int index = i;
+            String originalAnswer = decodeHtmlEntities(answers.get(i).getTitle().getFr()); // Décoder les entités HTML
+            textsToTranslate[i] = originalAnswer;
+            
+            callbacks[i] = new MyMemoryTranslationService.TranslationCallback() {
+                @Override
+                public void onSuccess(String translatedText) {
+                    QuizQuestion.Title title = new QuizQuestion.Title();
+                    title.setFr(translatedText);
+                    title.setEn(originalAnswer);
+                    answers.get(index).setTitle(title);
+                    
+                    translatedAnswers[0]++;
+                    checkAllAnswersTranslated(answers, translatedAnswers, totalAnswers, quizQ, quizQuestions, translatedCount, totalCount, callback);
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.w(TAG, "Translation failed for answer: " + errorMessage);
+                    // Utiliser la réponse originale si la traduction échoue
+                    QuizQuestion.Title title = new QuizQuestion.Title();
+                    title.setFr(originalAnswer);
+                    title.setEn(originalAnswer);
+                    answers.get(index).setTitle(title);
+                    
+                    translatedAnswers[0]++;
+                    checkAllAnswersTranslated(answers, translatedAnswers, totalAnswers, quizQ, quizQuestions, translatedCount, totalCount, callback);
+                }
+            };
+        }
+
+        // Lancer les traductions en parallèle
+        translationService.translateTexts(textsToTranslate, callbacks);
+    }
+
+    private void checkAllAnswersTranslated(List<QuizQuestion.Answer> answers, int[] translatedAnswers, int totalAnswers, 
+                                       QuizQuestion quizQ, List<QuizQuestion> quizQuestions, 
+                                       int[] translatedCount, int totalCount, QuizCallback callback) {
+        if (translatedAnswers[0] == totalAnswers) {
+            quizQ.setAnswers(answers);
+            quizQuestions.add(quizQ);
+            translatedCount[0]++;
+            
+            if (translatedCount[0] == totalCount) {
+                Log.i(TAG, "All questions translated successfully");
+                callback.onSuccess(quizQuestions);
+            }
+        }
     }
 
     private int convertDifficulty(String difficulty) {
@@ -278,6 +369,37 @@ public class QuizRepository {
         
         Log.i(TAG, "Loaded " + frenchQuestions.size() + " local French questions");
         callback.onSuccess(frenchQuestions);
+    }
+
+    // Méthode utilitaire pour décoder les entités HTML
+    private String decodeHtmlEntities(String text) {
+        if (text == null) return "";
+        
+        Log.d(TAG, "Original text before decoding: " + text);
+        
+        // Décoder les entités HTML communes
+        String decoded = text
+                .replace("&quot;", "\"")
+                .replace("&apos;", "'")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&#039;", "'")
+                .replace("&#x27;", "'")
+                .replace("&#x2F;", "/")
+                .replace("&#x3D;", "=")
+                .replace("&#x60;", "`")
+                .replace("&#34;", "\"")
+                .replace("&#39;", "'")
+                .replace("&#47;", "/")
+                .replace("&#61;", "=")
+                .replace("&#96;", "`");
+        
+        // Utiliser Html.fromHtml pour les entités plus complexes
+        decoded = Html.fromHtml(decoded, Html.FROM_HTML_MODE_LEGACY).toString();
+        
+        Log.d(TAG, "Decoded text: " + decoded);
+        return decoded;
     }
 
     // Questions par défaut en cas d'erreur API

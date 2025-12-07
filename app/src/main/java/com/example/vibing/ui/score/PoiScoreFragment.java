@@ -1,22 +1,25 @@
 package com.example.vibing.ui.score;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.app.AlertDialog;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -25,13 +28,12 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
-
 import com.example.vibing.R;
 import com.example.vibing.databinding.FragmentPoiScoreBinding;
+import com.example.vibing.models.Poi;
 import com.example.vibing.models.QuizQuestion;
 import com.example.vibing.repository.QuizRepository;
-
-import android.util.Log;
+import com.example.vibing.ui.score.ScoreViewModel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -241,12 +243,25 @@ public class PoiScoreFragment extends Fragment {
     }
 
     private void showApiQuestionDialog(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
+        Log.i("PoiScoreFragment", "showApiQuestionDialog() called");
+        
+        // S'assurer qu'on est sur le thread UI
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            new Handler(Looper.getMainLooper()).post(() -> showApiQuestionDialogOnUiThread(questions, currentQuestionIndex, currentScore));
+        } else {
+            showApiQuestionDialogOnUiThread(questions, currentQuestionIndex, currentScore);
+        }
+    }
+    
+    private void showApiQuestionDialogOnUiThread(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
+        Log.i("PoiScoreFragment", "showApiQuestionDialogOnUiThread() called");
+        
         if (currentQuestionIndex >= questions.size()) {
             // Quiz finished, check if score beats zone score
             checkQuizResult(currentScore);
             return;
         }
-
+        
         QuizQuestion currentQuestion = questions.get(currentQuestionIndex);
         final int finalScore = currentScore; // Make effectively final for lambda
         
