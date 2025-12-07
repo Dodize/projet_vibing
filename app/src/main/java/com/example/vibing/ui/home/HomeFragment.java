@@ -715,7 +715,12 @@ PoiItem(String name, String id, double latitude, double longitude, int score, in
         if (userTeamId == -1) {
             String teamIdString = prefs.getString("team_id", "1"); // Default to team 1 if not set
             try {
-                userTeamId = Integer.parseInt(teamIdString);
+                // Handle both "1" and "team_1" formats
+                if (teamIdString.startsWith("team_")) {
+                    userTeamId = Integer.parseInt(teamIdString.substring(5)); // Extract number after "team_"
+                } else {
+                    userTeamId = Integer.parseInt(teamIdString);
+                }
             } catch (NumberFormatException e) {
                 android.util.Log.e("HOME_FRAGMENT", "Error parsing team_id: " + teamIdString, e);
                 userTeamId = 1; // Default fallback

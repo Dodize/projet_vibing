@@ -6,4 +6,5 @@
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
     <string name="title_teams">Équipes</string>
+    <string name="voice_commands_list">• \"Je dépose les armes\" - Bonus 25€\n• \"Je capture la zone\" - Quiz pour capturer la zone</string>
 </resources>

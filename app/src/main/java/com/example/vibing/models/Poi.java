@@ -15,6 +15,7 @@ public class Poi {
     private Integer currentScore;
     private String ownerTeamId;
     private java.util.Date captureTime;
+    private java.util.Date lastUpdated;
     
     // Raw data map for manual extraction
     private Map<String, Object> rawData;
@@ -184,5 +185,20 @@ public class Poi {
 
     public void setCaptureTime(java.util.Date captureTime) {
         this.captureTime = captureTime;
+    }
+
+    public java.util.Date getLastUpdated() {
+        // Try raw data map first for lastUpdated
+        if (rawData != null && rawData.containsKey("lastUpdated")) {
+            Object lastUpdatedObj = rawData.get("lastUpdated");
+            if (lastUpdatedObj instanceof java.util.Date) {
+                return (java.util.Date) lastUpdatedObj;
+            }
+        }
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(java.util.Date lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 }

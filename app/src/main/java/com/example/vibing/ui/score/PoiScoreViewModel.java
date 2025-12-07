@@ -24,7 +24,7 @@ public class PoiScoreViewModel extends ViewModel {
     private long lastKnownScoreTime = 0; // Local timestamp for score calculation
     private static final long CAPTURE_GRACE_PERIOD_MILLIS = 30 * 1000; // 30 seconds grace period after capture
     
-    private static final long DECREMENT_RATE_MILLIS = 5 * 1000; // 1 point per 5 seconds
+    private static final long DECREMENT_RATE_MILLIS = 60 * 60 * 1000; // 1 point per hour
     private static final int MIN_SCORE = 10;
 
     public PoiScoreViewModel() {
@@ -37,13 +37,22 @@ public class PoiScoreViewModel extends ViewModel {
     }
     
     public void initializePoi(String poiId, String poiName, int initialScore) {
+        android.util.Log.d("POI_SCORE", "=== INITIALIZE POI START ===");
+        android.util.Log.d("POI_SCORE", "POI ID: " + poiId);
+        android.util.Log.d("POI_SCORE", "POI Name: " + poiName);
+        android.util.Log.d("POI_SCORE", "Initial Score (from HomeFragment): " + initialScore);
+        
         this.poiId = poiId;
         this.poiName = poiName;
         
-        // Set initial score locally, don't load from Firebase yet
-        // Firebase loading will be done on demand
-        mCurrentScore.setValue(initialScore);
+        // Don't set initial score yet - wait for Firebase data to calculate dynamic score
+        // This prevents showing incorrect score before calculation
         mOwningTeam.setValue(0); // Default to neutral until loaded
+        
+        android.util.Log.d("POI_SCORE", "About to call loadAndUpdateScore()...");
+        // Immediately load from Firebase to get correct dynamic score
+        loadAndUpdateScore();
+        android.util.Log.d("POI_SCORE", "=== INITIALIZE POI END ===");
     }
     
     public void loadFromFirebase() {
@@ -51,30 +60,60 @@ public class PoiScoreViewModel extends ViewModel {
     }
     
     private void loadAndUpdateScore() {
+        android.util.Log.d("POI_SCORE", "=== LOAD AND UPDATE SCORE START ===");
         android.util.Log.d("POI_SCORE", "loadAndUpdateScore called for POI: " + poiName + ", ID: " + poiId);
+        android.util.Log.d("POI_SCORE", "Current mCurrentScore value before Firebase call: " + mCurrentScore.getValue());
         
         if (poiId != null) {
+            android.util.Log.d("POI_SCORE", "Making Firebase query for document: " + poiId);
             db.collection("pois").document(poiId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
+                    android.util.Log.d("POI_SCORE", "=== FIREBASE SUCCESS CALLBACK START ===");
                     android.util.Log.d("POI_SCORE", "Firebase query successful for POI: " + poiName + ", exists: " + documentSnapshot.exists());
+                    android.util.Log.d("POI_SCORE", "Document ID: " + documentSnapshot.getId());
+                    android.util.Log.d("POI_SCORE", "Document reference: " + documentSnapshot.getReference().getPath());
                     
                     if (documentSnapshot.exists()) {
                         Map<String, Object> data = documentSnapshot.getData();
+                        android.util.Log.d("POI_SCORE", "DEBUG: Raw Firebase data keys: " + data.keySet());
+                        android.util.Log.d("POI_SCORE", "DEBUG: Raw Firebase data: " + data.toString());
+                        
+                        // Log specific timestamp objects with more detail
+                        android.util.Log.d("POI_SCORE", "=== DETAILED TIMESTAMP INSPECTION ===");
+                        Object captureTimeRaw = data.get("captureTime");
+                        Object lastUpdatedRaw = data.get("lastUpdated");
+                        
+                        android.util.Log.d("POI_SCORE", "captureTime raw: " + captureTimeRaw);
+                        android.util.Log.d("POI_SCORE", "captureTime class: " + (captureTimeRaw != null ? captureTimeRaw.getClass().getName() : "null"));
+                        if (captureTimeRaw != null) {
+                            android.util.Log.d("POI_SCORE", "captureTime toString(): " + captureTimeRaw.toString());
+                        }
+                        
+                        android.util.Log.d("POI_SCORE", "lastUpdated raw: " + lastUpdatedRaw);
+                        android.util.Log.d("POI_SCORE", "lastUpdated class: " + (lastUpdatedRaw != null ? lastUpdatedRaw.getClass().getName() : "null"));
+                        if (lastUpdatedRaw != null) {
+                            android.util.Log.d("POI_SCORE", "lastUpdated toString(): " + lastUpdatedRaw.toString());
+                        }
+                        android.util.Log.d("POI_SCORE", "=== DETAILED TIMESTAMP INSPECTION END ===");
                         
                         if (data != null) {
-                            int currentScore = 100; // default
+                            int baseScore = 100; // default base score from Firebase
                             long lastUpdatedTime = System.currentTimeMillis() - 60000; // Assume 1 minute ago if no timestamp
                             
-                            // Get current score from Firebase FIRST
+                            // Get base score from Firebase (NEVER display this directly)
+                            android.util.Log.d("POI_SCORE", "Checking for currentScore field in Firebase data...");
                             if (data.containsKey("currentScore")) {
                                 Object scoreObj = data.get("currentScore");
+                                android.util.Log.d("POI_SCORE", "Found currentScore object: " + scoreObj + " (type: " + (scoreObj != null ? scoreObj.getClass().getSimpleName() : "null") + ")");
                                 if (scoreObj instanceof Number) {
-                                    currentScore = ((Number) scoreObj).intValue();
-                                    android.util.Log.d("POI_SCORE", "Retrieved currentScore from Firebase: " + currentScore);
+                                    baseScore = ((Number) scoreObj).intValue();
+                                    android.util.Log.d("POI_SCORE", "✅ Retrieved BASE score from Firebase: " + baseScore + " (will be calculated dynamically)");
+                                } else {
+                                    android.util.Log.w("POI_SCORE", "❌ currentScore is not a Number: " + scoreObj);
                                 }
                             } else {
-                                android.util.Log.w("POI_SCORE", "No currentScore field found in Firebase, using default: " + currentScore);
+                                android.util.Log.w("POI_SCORE", "❌ No currentScore field found in Firebase data. Available fields: " + data.keySet());
                             }
                             
                             // Get owning team from Firebase
@@ -99,40 +138,114 @@ public class PoiScoreViewModel extends ViewModel {
                             
 
                             
-                            // Get capture time from Firebase (use captureTime instead of lastUpdated)
-                            boolean foundCaptureTime = false;
+                             // Get timestamps from Firebase - prioritize captureTime over lastUpdated for accuracy
+                            boolean foundUpdateTime = false;
+                            long captureTimeMs = 0;
+                            long lastUpdatedMs = 0;
+                            
+                            // First, get captureTime
                             if (data.containsKey("captureTime")) {
                                 Object captureTimeObj = data.get("captureTime");
+                                android.util.Log.d("POI_SCORE", "DEBUG: captureTime object from Firebase: " + captureTimeObj + " (type: " + (captureTimeObj != null ? captureTimeObj.getClass().getSimpleName() : "null") + ")");
+                                
                                 if (captureTimeObj instanceof Date) {
-                                    lastUpdatedTime = ((Date) captureTimeObj).getTime();
-                                    long timeSinceCapture = System.currentTimeMillis() - lastUpdatedTime;
-                                    android.util.Log.d("POI_SCORE", "Retrieved captureTime from Firebase: " + new java.util.Date(lastUpdatedTime) + " (age: " + (timeSinceCapture / 1000) + " seconds ago)");
-                                    
-                                    // Detect corrupted captureTime (less than 2 minutes ago but score is not at minimum)
-                                    if (timeSinceCapture < 120000 && currentScore > MIN_SCORE + 10) {
-                                        android.util.Log.w("POI_SCORE", "DETECTED CORRUPTION: captureTime is only " + (timeSinceCapture/1000) + "s ago but score is " + currentScore + ". Ignoring captureTime and using much older time.");
-                                        // Use a much older time (24 hours ago) to prevent immediate decrement
-                                        lastUpdatedTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000);
-                                    } else {
-                                        foundCaptureTime = true;
+                                    captureTimeMs = ((Date) captureTimeObj).getTime();
+                                    android.util.Log.d("POI_SCORE", "DEBUG: captureTime is Date object: " + captureTimeMs);
+                                } else if (captureTimeObj != null && captureTimeObj.getClass().getSimpleName().equals("Timestamp")) {
+                                    try {
+                                        java.lang.reflect.Method getSecondsMethod = captureTimeObj.getClass().getMethod("getSeconds");
+                                        java.lang.reflect.Method getNanosecondsMethod = captureTimeObj.getClass().getMethod("getNanoseconds");
+                                        
+                                        long seconds = ((Long) getSecondsMethod.invoke(captureTimeObj));
+                                        int nanos = ((Integer) getNanosecondsMethod.invoke(captureTimeObj));
+                                        
+                                        captureTimeMs = seconds * 1000L + nanos / 1000000L;
+                                        android.util.Log.d("POI_SCORE", "DEBUG: captureTime Timestamp - seconds: " + seconds + ", nanos: " + nanos);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: captureTime conversion math: " + seconds + " * 1000 + " + nanos + "/1000000 = " + captureTimeMs);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: captureTime converted to timestamp: " + captureTimeMs);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: captureTime converted date: " + new java.util.Date(captureTimeMs));
+                                    } catch (Exception e) {
+                                        android.util.Log.e("POI_SCORE", "Error converting captureTime Timestamp", e);
+                                        // Try alternative method - use toDate() if available
+                                        try {
+                                            java.lang.reflect.Method toDateMethod = captureTimeObj.getClass().getMethod("toDate");
+                                            java.util.Date date = (java.util.Date) toDateMethod.invoke(captureTimeObj);
+                                            captureTimeMs = date.getTime();
+                                            android.util.Log.d("POI_SCORE", "DEBUG: captureTime converted using toDate(): " + captureTimeMs + " (" + date + ")");
+                                        } catch (Exception e2) {
+                                            android.util.Log.e("POI_SCORE", "Error with toDate() method too", e2);
+                                        }
                                     }
                                 }
                             }
                             
-                            if (!foundCaptureTime) {
-                                if (data.containsKey("lastUpdated")) {
-                                    // Fallback to lastUpdated if captureTime not available
-                                    Object lastUpdatedObj = data.get("lastUpdated");
-                                    if (lastUpdatedObj instanceof Date) {
-                                        lastUpdatedTime = ((Date) lastUpdatedObj).getTime();
-                                        android.util.Log.d("POI_SCORE", "Retrieved lastUpdated from Firebase: " + new java.util.Date(lastUpdatedTime) + " (age: " + ((System.currentTimeMillis() - lastUpdatedTime) / 1000) + " seconds ago)");
+                            // Then, get lastUpdated
+                            if (data.containsKey("lastUpdated")) {
+                                Object lastUpdatedObj = data.get("lastUpdated");
+                                android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated object from Firebase: " + lastUpdatedObj + " (type: " + (lastUpdatedObj != null ? lastUpdatedObj.getClass().getSimpleName() : "null") + ")");
+                                
+                                if (lastUpdatedObj instanceof Date) {
+                                    lastUpdatedMs = ((Date) lastUpdatedObj).getTime();
+                                    android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated is Date object: " + lastUpdatedMs);
+                                } else if (lastUpdatedObj != null && lastUpdatedObj.getClass().getSimpleName().equals("Timestamp")) {
+                                    try {
+                                        java.lang.reflect.Method getSecondsMethod = lastUpdatedObj.getClass().getMethod("getSeconds");
+                                        java.lang.reflect.Method getNanosecondsMethod = lastUpdatedObj.getClass().getMethod("getNanoseconds");
+                                        
+                                        long seconds = ((Long) getSecondsMethod.invoke(lastUpdatedObj));
+                                        int nanos = ((Integer) getNanosecondsMethod.invoke(lastUpdatedObj));
+                                        
+                                        lastUpdatedMs = seconds * 1000L + nanos / 1000000L;
+                                        android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated Timestamp - seconds: " + seconds + ", nanos: " + nanos);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated conversion math: " + seconds + " * 1000 + " + nanos + "/1000000 = " + lastUpdatedMs);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated converted to timestamp: " + lastUpdatedMs);
+                                        android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated converted date: " + new java.util.Date(lastUpdatedMs));
+                                    } catch (Exception e) {
+                                        android.util.Log.e("POI_SCORE", "Error converting lastUpdated Timestamp", e);
+                                        // Try alternative method - use toDate() if available
+                                        try {
+                                            java.lang.reflect.Method toDateMethod = lastUpdatedObj.getClass().getMethod("toDate");
+                                            java.util.Date date = (java.util.Date) toDateMethod.invoke(lastUpdatedObj);
+                                            lastUpdatedMs = date.getTime();
+                                            android.util.Log.d("POI_SCORE", "DEBUG: lastUpdated converted using toDate(): " + lastUpdatedMs + " (" + date + ")");
+                                        } catch (Exception e2) {
+                                            android.util.Log.e("POI_SCORE", "Error with toDate() method too", e2);
+                                        }
                                     }
-                                } else {
-                                    android.util.Log.w("POI_SCORE", "No captureTime or lastUpdated found in Firebase, using calculated time");
-                                    // Use a very old time to prevent immediate decrement
-                                    lastUpdatedTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000);
                                 }
                             }
+                            
+                             // Choose the best timestamp - prioritize captureTime if it's older and more realistic
+                            long currentTimeForComparison = System.currentTimeMillis();
+                            long captureAge = captureTimeMs > 0 ? currentTimeForComparison - captureTimeMs : 0;
+                            long lastUpdatedAge = lastUpdatedMs > 0 ? currentTimeForComparison - lastUpdatedMs : 0;
+                            
+                            android.util.Log.d("POI_SCORE", "TIMESTAMP COMPARISON:");
+                            android.util.Log.d("POI_SCORE", "  captureTime: " + captureTimeMs + " (age: " + (captureAge / (1000 * 60 * 60)) + " hours)");
+                            android.util.Log.d("POI_SCORE", "  lastUpdated: " + lastUpdatedMs + " (age: " + (lastUpdatedAge / (1000 * 60 * 60)) + " hours)");
+                            
+                            // FORCE: Always use captureTime if it exists (it's the correct one from our script)
+                            if (captureTimeMs > 0) {
+                                lastUpdatedTime = captureTimeMs;
+                                android.util.Log.d("POI_SCORE", "FORCING CAPTURE TIME: " + captureTimeMs + " (" + new java.util.Date(captureTimeMs) + ")");
+                                android.util.Log.d("POI_SCORE", "IGNORING lastUpdated: " + lastUpdatedMs + " (" + (lastUpdatedMs > 0 ? new java.util.Date(lastUpdatedMs) : "null") + ")");
+                            } else if (lastUpdatedMs > 0) {
+                                lastUpdatedTime = lastUpdatedMs;
+                                android.util.Log.d("POI_SCORE", "USING LAST UPDATED TIME (no captureTime available)");
+                            } else {
+                                // Fallback to 24 hours ago
+                                lastUpdatedTime = currentTimeForComparison - (24 * 60 * 60 * 1000);
+                                android.util.Log.d("POI_SCORE", "USING FALLBACK TIME (24 hours ago)");
+                            }
+                            
+                            if (lastUpdatedTime > 0) {
+                                long timeSinceUpdate = currentTimeForComparison - lastUpdatedTime;
+                                android.util.Log.d("POI_SCORE", "FINAL: Using timestamp: " + new java.util.Date(lastUpdatedTime) + " (age: " + (timeSinceUpdate / 1000) + " seconds ago)");
+                                foundUpdateTime = true;
+                            }
+                            
+                            // Timestamp selection already done above, just log for debugging
+                            android.util.Log.d("POI_SCORE", "TIMESTAMP SELECTION COMPLETED - Using: " + new java.util.Date(lastUpdatedTime));
                             
                             // If we have a recent local capture time, use it instead
                             if (lastCaptureTime > 0 && (System.currentTimeMillis() - lastCaptureTime) < CAPTURE_GRACE_PERIOD_MILLIS) {
@@ -140,71 +253,87 @@ public class PoiScoreViewModel extends ViewModel {
                                 android.util.Log.d("POI_SCORE", "Using local captureTime instead: " + new java.util.Date(lastUpdatedTime) + " (age: " + ((System.currentTimeMillis() - lastUpdatedTime) / 1000) + " seconds ago)");
                             }
                             
-                            // Calculate time-based decrement from capture timestamp
+                             // Calculate time-based decrement from capture timestamp
                             long currentTime = System.currentTimeMillis();
                             long timeElapsed = currentTime - lastUpdatedTime;
                             
-                            android.util.Log.d("POI_SCORE", "Time calculation: current=" + currentTime + 
-                                ", captureTime=" + lastUpdatedTime + 
-                                ", elapsed=" + timeElapsed + "ms (" + (timeElapsed/1000) + " seconds)");
+                            android.util.Log.d("POI_SCORE", "=== TIME CALCULATION DEBUG ===");
+                            android.util.Log.d("POI_SCORE", "Current system time: " + currentTime + " (" + new java.util.Date(currentTime) + ")");
+                            android.util.Log.d("POI_SCORE", "Reference time from Firebase: " + lastUpdatedTime + " (" + new java.util.Date(lastUpdatedTime) + ")");
+                            android.util.Log.d("POI_SCORE", "Time elapsed: " + timeElapsed + "ms (" + (timeElapsed/1000) + " seconds, " + (timeElapsed/(60*60*1000)) + " hours)");
+                            android.util.Log.d("POI_SCORE", "=== TIME CALCULATION DEBUG END ===");
                             
                             // Check if we're in grace period after capture
                             boolean inGracePeriod = wasRecentlyCaptured();
                             
-                            // Calculate decrement (1 point per 5 seconds) - only if not in grace period
+                             // ALWAYS calculate dynamic score - NEVER use Firebase score directly
                             int decrementedAmount = 0;
-                            int newScore = currentScore;
+                            int dynamicScore = baseScore;
                             
                             if (!inGracePeriod) {
                                 decrementedAmount = (int) (timeElapsed / DECREMENT_RATE_MILLIS);
-                                newScore = Math.max(MIN_SCORE, currentScore - decrementedAmount);
+                                dynamicScore = Math.max(MIN_SCORE, baseScore - decrementedAmount);
+                                
+                                android.util.Log.d("POI_SCORE", "DYNAMIC SCORE CALCULATION: " +
+                                    "baseScore=" + baseScore +
+                                    ", timeElapsed=" + (timeElapsed/1000) + "s" +
+                                    ", hoursElapsed=" + (timeElapsed/(60*60*1000)) +
+                                    ", decrementedAmount=" + decrementedAmount +
+                                    ", dynamicScore=" + dynamicScore +
+                                    ", MIN_SCORE=" + MIN_SCORE);
+                            } else {
+                                android.util.Log.d("POI_SCORE", "IN GRACE PERIOD: No decrement applied, using base score");
                             }
                             
-                            android.util.Log.d("POI_SCORE", "Decrement calculation: timeElapsed=" + timeElapsed + 
-                                "ms (" + (timeElapsed/1000) + "s), rate=" + DECREMENT_RATE_MILLIS + "ms, gracePeriod=" + inGracePeriod + 
-                                ", decremented=" + decrementedAmount + 
-                                " points, currentScore=" + currentScore + ", newScore=" + newScore);
+                            // ALWAYS update local score with calculated dynamic score
+                            // NEVER display raw Firebase score
+                            android.util.Log.d("POI_SCORE", "About to set mCurrentScore to dynamicScore: " + dynamicScore);
+                            android.util.Log.d("POI_SCORE", "Previous mCurrentScore value: " + mCurrentScore.getValue());
                             
-                            // Update local score ONLY - NO Firebase update for decrement
-                            // The score will be calculated on-the-fly next time
-                            // Firebase updates should ONLY happen on explicit capture
-                            mCurrentScore.setValue(newScore);
+                            mCurrentScore.setValue(dynamicScore);
                             
-                            android.util.Log.d("POI_SCORE", "SCORE UPDATE: Local score set to " + newScore + 
-                                " (NO Firebase update for decrement - only on capture)");
+                            android.util.Log.d("POI_SCORE", "✅ DYNAMIC SCORE SET: " + dynamicScore + 
+                                " (base=" + baseScore + ", decremented=" + decrementedAmount + ")");
                             
-                            android.util.Log.d("POI_SCORE", "LOCAL UPDATE: Score updated locally to " + newScore + 
-                                " (time elapsed: " + timeElapsed + "ms, decremented: " + decrementedAmount + ")");
+                            android.util.Log.d("POI_SCORE", "✅ FINAL: Displaying dynamic score " + dynamicScore + 
+                                " instead of Firebase score " + baseScore);
+                            
+                            android.util.Log.d("POI_SCORE", "New mCurrentScore value after setValue: " + mCurrentScore.getValue());
                             
                             // Reset justCaptured flag after processing
                             justCaptured = false;
                             
                             // Debug logging
                             android.util.Log.d("POI_SCORE", "POI: " + poiName + 
-                                ", Original: " + currentScore + 
+                                ", Base score: " + baseScore + 
+                                ", Dynamic score: " + dynamicScore + 
                                 ", Time elapsed: " + timeElapsed + "ms" +
                                 ", Decremented: " + decrementedAmount +
-                                ", New score: " + newScore +
                                 ", Just captured: " + justCaptured +
-                                ", Will update Firebase: " + (decrementedAmount > 0 && !justCaptured) +
-                                "" +
                                 ", Firebase time: " + lastUpdatedTime +
                                 ", Capture time: " + lastCaptureTime);
                         }
                     } else {
-                        android.util.Log.w("POI_SCORE", "Document does not exist for POI: " + poiName);
-                        mCurrentScore.setValue(100);
+                        android.util.Log.w("POI_SCORE", "❌ Document does not exist for POI: " + poiName);
+                        android.util.Log.d("POI_SCORE", "Setting default dynamic score: 100");
+                        mCurrentScore.setValue(100); // Default dynamic score
                     }
+                    android.util.Log.d("POI_SCORE", "=== FIREBASE SUCCESS CALLBACK END ===");
                 })
                 .addOnFailureListener(e -> {
-                    // On error, use default score
+                    android.util.Log.d("POI_SCORE", "=== FIREBASE FAILURE CALLBACK START ===");
+                    // On error, use default dynamic score
+                    android.util.Log.d("POI_SCORE", "Setting default dynamic score due to error: 100");
                     mCurrentScore.setValue(100);
                     android.util.Log.e("POI_SCORE", "Error loading score for POI: " + poiName, e);
+                    android.util.Log.d("POI_SCORE", "=== FIREBASE FAILURE CALLBACK END ===");
                 });
         } else {
-            android.util.Log.e("POI_SCORE", "POI ID is null for POI: " + poiName);
-            mCurrentScore.setValue(100);
+            android.util.Log.e("POI_SCORE", "❌ POI ID is null for POI: " + poiName);
+            android.util.Log.d("POI_SCORE", "Setting default dynamic score due to null ID: 100");
+            mCurrentScore.setValue(100); // Default dynamic score
         }
+        android.util.Log.d("POI_SCORE", "=== LOAD AND UPDATE SCORE END ===");
     }
     
     private boolean wasRecentlyCaptured() {
@@ -214,14 +343,15 @@ public class PoiScoreViewModel extends ViewModel {
     
     private void updateZoneInFirebase(int newScore, int teamId) {
         if (poiId != null) {
-            long captureTime = System.currentTimeMillis();
+            long updateTime = System.currentTimeMillis();
             Map<String, Object> updates = new HashMap<>();
             updates.put("currentScore", newScore);
             updates.put("ownerTeamId", teamId > 0 ? "team_" + teamId : null);
-            // Store capture timestamp for on-the-fly score calculation
-            updates.put("captureTime", new java.util.Date(captureTime));
+            // Store both capture timestamp and last updated timestamp
+            updates.put("captureTime", new java.util.Date(updateTime));
+            updates.put("lastUpdated", new java.util.Date(updateTime));
             
-            android.util.Log.d("POI_SCORE", "Capturing POI with capture timestamp: " + new java.util.Date(captureTime));
+            android.util.Log.d("POI_SCORE", "Capturing POI with update timestamp: " + new java.util.Date(updateTime));
             
             db.collection("pois").document(poiId)
                 .update(updates)
@@ -235,6 +365,7 @@ public class PoiScoreViewModel extends ViewModel {
     }
 
     public LiveData<Integer> getCurrentScore() {
+        android.util.Log.d("POI_SCORE", "getCurrentScore() called, current value: " + mCurrentScore.getValue());
         return mCurrentScore;
     }
 
@@ -254,6 +385,7 @@ public class PoiScoreViewModel extends ViewModel {
     }
     
     public void setScore(int newScore) {
+        android.util.Log.w("POI_SCORE", "setScore() called with score: " + newScore + " - This should only be used for dynamic scores, not raw Firebase scores!");
         mCurrentScore.setValue(newScore);
         // No automatic Firebase update - score is calculated on-the-fly
     }
@@ -271,6 +403,89 @@ public class PoiScoreViewModel extends ViewModel {
         
         // Update Firebase immediately with capture data
         updateZoneInFirebase(newScore, teamId);
+    }
+    
+    /**
+     * Calcule le score dynamique actuel de la zone en fonction du temps écoulé
+     * @return Le score décrémenté en fonction du temps
+     */
+    public int calculateDynamicScore() {
+        Integer currentScore = mCurrentScore.getValue();
+        if (currentScore == null) {
+            return 100; // Score par défaut
+        }
+        
+        // Récupérer le timestamp de dernière mise à jour depuis Firebase
+        if (poiId != null) {
+            db.collection("pois").document(poiId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Map<String, Object> data = documentSnapshot.getData();
+                        if (data != null) {
+                            long lastUpdatedTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000); // 24h par défaut
+                            
+                            // Prioriser lastUpdated, puis captureTime
+                            if (data.containsKey("lastUpdated")) {
+                                Object lastUpdatedObj = data.get("lastUpdated");
+                                if (lastUpdatedObj instanceof Date) {
+                                    lastUpdatedTime = ((Date) lastUpdatedObj).getTime();
+                                }
+                            } else if (data.containsKey("captureTime")) {
+                                Object captureTimeObj = data.get("captureTime");
+                                if (captureTimeObj instanceof Date) {
+                                    lastUpdatedTime = ((Date) captureTimeObj).getTime();
+                                }
+                            }
+                            
+                            // Calculer le décrément (1 point par heure)
+                            long currentTime = System.currentTimeMillis();
+                            long timeElapsed = currentTime - lastUpdatedTime;
+                            int decrementedAmount = (int) (timeElapsed / DECREMENT_RATE_MILLIS);
+                            int dynamicScore = Math.max(MIN_SCORE, currentScore - decrementedAmount);
+                            
+                            android.util.Log.d("POI_SCORE", "Dynamic score calculation: original=" + currentScore + 
+                                ", timeElapsed=" + (timeElapsed/(60*60*1000)) + " hours, decremented=" + decrementedAmount + 
+                                ", dynamicScore=" + dynamicScore);
+                            
+                            mCurrentScore.setValue(dynamicScore);
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("POI_SCORE", "Error calculating dynamic score", e);
+                });
+        }
+        
+        return currentScore;
+    }
+    
+    /**
+     * Gère le QCM: compare le score du joueur au score dynamique de la zone
+     * @param playerScore Le score obtenu par le joueur au QCM
+     * @param playerTeam L'équipe du joueur
+     * @return true si le joueur gagne, false sinon
+     */
+    public boolean handleQcmResult(int playerScore, int playerTeam) {
+        // Utiliser le score dynamique déjà calculé et affiché
+        Integer dynamicZoneScore = mCurrentScore.getValue();
+        if (dynamicZoneScore == null) {
+            dynamicZoneScore = 100; // Default dynamic score
+        }
+        
+        android.util.Log.d("POI_SCORE", "QCM Result: Player score=" + playerScore + 
+            ", Zone dynamic score=" + dynamicZoneScore + 
+            ", Player team=" + playerTeam);
+        
+        // Le joueur gagne si son score est supérieur au score dynamique de la zone
+        if (playerScore > dynamicZoneScore) {
+            android.util.Log.d("POI_SCORE", "Player WINS QCM - Capturing zone with score " + playerScore);
+            captureZone(playerScore, playerTeam);
+            return true;
+        } else {
+            android.util.Log.d("POI_SCORE", "Player LOSES QCM - Zone not captured (player: " + playerScore + " < zone: " + dynamicZoneScore + ")");
+            return false;
+        }
     }
 
     @Override

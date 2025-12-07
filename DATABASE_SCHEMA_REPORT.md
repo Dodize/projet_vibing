@@ -46,7 +46,8 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 | `location.longitude` | Number | Longitude en degrés | 1.4442 |
 | `ownerTeamId` | String/null | ID de l'équipe propriétaire | null (neutre) |
 | `currentScore` | Number | Points disponibles pour ce POI | 500 |
-| `lastUpdated` | Timestamp | Dernière mise à jour | Timestamp Firebase |
+| `captureTime` | Timestamp | Date de capture initiale | Timestamp Firebase |
+| `lastUpdated` | Timestamp | Dernière mise à jour du score | Timestamp Firebase |
 
 **Catégories de POIs disponibles :**
 - Centre-ville historique (Capitole, Place du Capitole, Basilique Saint-Sernin, Couvent des Jacobins, Pont Neuf)
@@ -74,3 +75,6 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 2. **Gestion des équipes** : Les POIs neutres ont `ownerTeamId` à `null`
 3. **Système de points** : Chaque POI a un `currentScore` qui peut être gagné par les équipes
 4. **Questions générales** : Les questions QCM sont gérées globalement dans l'application et ne dépendent pas des POIs spécifiques
+5. **Calcul dynamique du score** : Le score des POIs décrémente de 1 point par heure depuis la dernière mise à jour (`lastUpdated`)
+6. **Capture de zone** : Pour capturer une zone, le joueur doit obtenir un score au QCM supérieur au score dynamique actuel de la zone
+7. **Timestamps** : `captureTime` est utilisé pour la capture initiale, `lastUpdated` pour toutes les mises à jour de score

@@ -77,8 +77,7 @@ public class PoiScoreFragment extends Fragment {
             try {
                 android.util.Log.d("POI_SCORE", "Initializing POI: " + poiName + " with ID: " + poiId + " and score: " + poiScore + " owned by team: " + poiOwningTeam);
                 poiScoreViewModel.initializePoi(poiId, poiName, poiScore);
-                // ALWAYS load from Firebase to get real-time score
-                poiScoreViewModel.loadFromFirebase();
+                // loadFromFirebase() is now called automatically in initializePoi()
             } catch (Exception e) {
                 android.util.Log.e("POI_SCORE", "Error initializing POI: " + e.getMessage());
                 // Set default values if initialization fails
@@ -102,7 +101,17 @@ public class PoiScoreFragment extends Fragment {
         final TextView textView = binding.textScore;
         // Observe score changes
         poiScoreViewModel.getCurrentScore().observe(getViewLifecycleOwner(), score -> {
-            updateDisplayText(score, null);
+            android.util.Log.d("POI_SCORE", "=== FRAGMENT SCORE OBSERVER CALLBACK ===");
+            android.util.Log.d("POI_SCORE", "Score observed in fragment: " + score + " for POI: " + poiName);
+            android.util.Log.d("POI_SCORE", "Score is null: " + (score == null));
+            if (score != null) {
+                android.util.Log.d("POI_SCORE", "About to call updateDisplayText with score: " + score);
+                updateDisplayText(score, null);
+                android.util.Log.d("POI_SCORE", "updateDisplayText completed");
+            } else {
+                android.util.Log.w("POI_SCORE", "Score is null, not updating display");
+            }
+            android.util.Log.d("POI_SCORE", "=== FRAGMENT SCORE OBSERVER END ===");
         });
         
         // Observe team changes
@@ -297,16 +306,17 @@ public class PoiScoreFragment extends Fragment {
 
     private void checkQuizResult(int quizScore) {
         try {
-            Integer currentZoneScore = poiScoreViewModel.getCurrentScore().getValue();
-            if (currentZoneScore != null && quizScore > currentZoneScore) {
-                // Succès : le score utilisateur est supérieur au score de la zone
+            // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
+            boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
+            
+            if (playerWon) {
+                // Succès : le score utilisateur est supérieur au score dynamique de la zone
                 poiOwningTeam = userTeamId; // Update local owning team
-                poiScoreViewModel.captureZone(quizScore, userTeamId);
                 if (getContext() != null) {
                     Toast.makeText(getContext(), "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!", Toast.LENGTH_LONG).show();
                 }
             } else {
-                // Échec : le score utilisateur est inférieur ou égal au score de la zone
+                // Échec : le score utilisateur est inférieur ou égal au score dynamique de la zone
                 if (getContext() != null) {
                     Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + (poiName != null ? poiName : "inconnue") + ".", Toast.LENGTH_LONG).show();
                 }
@@ -375,16 +385,25 @@ private String getTeamDisplayText(int teamId) {
     
     
     private void updateDisplayText(Integer score, Integer team) {
+        android.util.Log.d("POI_SCORE", "=== UPDATE DISPLAY TEXT START ===");
+        android.util.Log.d("POI_SCORE", "Parameters - score: " + score + ", team: " + team);
+        
         if (getContext() == null || binding == null || binding.textScore == null) {
+            android.util.Log.w("POI_SCORE", "Cannot update display - context, binding, or textView is null");
+            android.util.Log.d("POI_SCORE", "Context null: " + (getContext() == null));
+            android.util.Log.d("POI_SCORE", "Binding null: " + (binding == null));
+            android.util.Log.d("POI_SCORE", "TextView null: " + (binding == null || binding.textScore == null));
             return;
         }
         
         // Get current values if not provided
         if (score == null) {
             score = poiScoreViewModel.getCurrentScore().getValue();
+            android.util.Log.d("POI_SCORE", "Score was null, got from ViewModel: " + score);
         }
         if (team == null) {
             team = poiScoreViewModel.getOwningTeam().getValue();
+            android.util.Log.d("POI_SCORE", "Team was null, got from ViewModel: " + team);
         }
         
         // Update local owning team for quiz result
@@ -396,7 +415,13 @@ private String getTeamDisplayText(int teamId) {
         displayText += "\n" + getTeamDisplayText(team != null ? team : 0);
         displayText += "\nScore de la zone: " + (score != null ? score : 0);
         
+        android.util.Log.d("POI_SCORE", "Final display text: " + displayText);
+        android.util.Log.d("POI_SCORE", "About to set text on TextView...");
+        
         binding.textScore.setText(displayText);
+        
+        android.util.Log.d("POI_SCORE", "Text set successfully on TextView");
+        android.util.Log.d("POI_SCORE", "=== UPDATE DISPLAY TEXT END ===");
     }
 
     @Override
