@@ -46,6 +46,7 @@ public class PoiScoreFragment extends Fragment {
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
     private QuizRepository quizRepository;
+    private AlertDialog loadingDialog;
 
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     
@@ -166,6 +167,7 @@ public class PoiScoreFragment extends Fragment {
         } else if (command.contains("je capture la zone")) {
             Log.i("PoiScoreFragment", "Command: je capture la zone - calling showQuizDialog()");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
+            showLoadingDialog();
             showQuizDialog();
         } else {
             Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
@@ -201,17 +203,36 @@ public class PoiScoreFragment extends Fragment {
             @Override
             public void onSuccess(List<QuizQuestion> questions) {
                 Log.i("PoiScoreFragment", "API success with " + questions.size() + " questions");
+                hideLoadingDialog();
                 // Utiliser les questions de l'API
                 showApiQuestionDialog(questions, 0, 0);
             }
 
             @Override
             public void onError(String errorMessage) {
+                hideLoadingDialog();
                 // En cas d'erreur, utiliser les questions par défaut
                 Log.w("PoiScoreFragment", "Erreur API: " + errorMessage + ", utilisation des questions par défaut");
                 showDefaultQuestionDialog();
             }
         });
+    }
+
+    private void showLoadingDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Chargement des questions");
+        builder.setMessage("Veuillez patienter pendant que nous chargeons les questions...");
+        builder.setCancelable(false);
+        
+        loadingDialog = builder.create();
+        loadingDialog.show();
+    }
+
+    private void hideLoadingDialog() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+            loadingDialog = null;
+        }
     }
 
     private void showDefaultQuestionDialog() {
@@ -252,6 +273,8 @@ public class PoiScoreFragment extends Fragment {
             showApiQuestionDialogOnUiThread(questions, currentQuestionIndex, currentScore);
         }
     }
+    
+
     
     private void showApiQuestionDialogOnUiThread(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
         Log.i("PoiScoreFragment", "showApiQuestionDialogOnUiThread() called");

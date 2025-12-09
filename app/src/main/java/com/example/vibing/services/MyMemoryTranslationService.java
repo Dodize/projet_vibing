@@ -12,8 +12,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 public class MyMemoryTranslationService {
     private static final String TAG = "MyMemoryTranslation";
@@ -71,11 +69,11 @@ public class MyMemoryTranslationService {
 
                     // Parser la réponse JSON
                     String translatedText = parseTranslationResponse(responseString);
-                    if (translatedText != null && !translatedText.equals(textToTranslate)) {
+                    if (translatedText != null) {
                         Log.d(TAG, "Translation successful: " + translatedText);
                         callback.onSuccess(translatedText);
                     } else {
-                        Log.w(TAG, "Translation failed or returned same text, using original");
+                        Log.w(TAG, "Translation failed, using original");
                         callback.onSuccess(textToTranslate); // Utiliser l'original si traduction échoue
                     }
                 } else {
