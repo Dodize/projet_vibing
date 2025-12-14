@@ -19,6 +19,7 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [x] Implémenter la gestion des Lieux d'Intérêt (POI) : affichage sur la carte, initialisation comme zones appartenant aléatoirement à une équipe.
 - [x] **CORRECTION**: Implémenter la visualisation de la couleur de l'équipe sur les zones conquises (correction du bug d'affichage "Neutre").
 - [x] Implémenter le système de score des POI qui décroît avec le temps depuis la dernière interaction.
+- [x] **TERMINÉ**: Implémenter l'actualisation en temps réel de la carte en fonction des équipes (capture de POI).
 
 ## 3.3. Interaction en Temps Réel et Localisation
 - [x] Implémenter l'affichage de la position de l'utilisateur sur la carte.

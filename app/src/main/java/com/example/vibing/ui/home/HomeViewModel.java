@@ -35,21 +35,25 @@ public class HomeViewModel extends ViewModel {
     private void loadPois() {
         try {
             db.collection("pois")
-                    .get()
-                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                        List<Poi> poiList = new ArrayList<>();
-                        for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                            // Create POI manually from document data
-                            Poi poi = createPoiFromDocument(document);
-                            poiList.add(poi);
+                    .addSnapshotListener((queryDocumentSnapshots, e) -> {
+                        if (e != null) {
+                            android.util.Log.e("HOME_VIEWMODEL", "Error listening to POI updates", e);
+                            return;
                         }
-                        pois.setValue(poiList);
-                    })
-                    .addOnFailureListener(e -> {
-                        // Fallback to test data
-                        loadTestPois();
+                        
+                        if (queryDocumentSnapshots != null) {
+                            List<Poi> poiList = new ArrayList<>();
+                            for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                                // Create POI manually from document data
+                                Poi poi = createPoiFromDocument(document);
+                                poiList.add(poi);
+                            }
+                            pois.setValue(poiList);
+                            android.util.Log.d("HOME_VIEWMODEL", "POI list updated with " + poiList.size() + " items");
+                        }
                     });
         } catch (Exception e) {
+            android.util.Log.e("HOME_VIEWMODEL", "Exception setting up POI listener", e);
             // Fallback to test data
             loadTestPois();
         }

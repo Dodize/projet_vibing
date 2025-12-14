@@ -325,6 +325,12 @@ public class PoiScoreFragment extends Fragment {
                 poiOwningTeam = userTeamId; // Update local owning team
                 if (getContext() != null) {
                     Toast.makeText(getContext(), "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!", Toast.LENGTH_LONG).show();
+                    
+                    // Attendre un peu avant de retourner à la page principale pour permettre à l'utilisateur de voir le message
+                    new android.os.Handler().postDelayed(() -> {
+                        NavController navController = Navigation.findNavController(requireView());
+                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
+                    }, 2000); // 2 secondes de délai
                 }
             } else {
                 // Échec : le score utilisateur est inférieur ou égal au score dynamique de la zone
