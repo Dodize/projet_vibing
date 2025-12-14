@@ -19,7 +19,7 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [x] Implémenter la gestion des Lieux d'Intérêt (POI) : affichage sur la carte, initialisation comme zones appartenant aléatoirement à une équipe.
 - [x] **CORRECTION**: Implémenter la visualisation de la couleur de l'équipe sur les zones conquises (correction du bug d'affichage "Neutre").
 - [x] Implémenter le système de score des POI qui décroît avec le temps depuis la dernière interaction.
-- [x] **TERMINÉ**: Implémenter l'actualisation en temps réel de la carte en fonction des équipes (capture de POI).
+- [x] Implémenter l'actualisation en temps réel de la carte en fonction des équipes (capture de POI).
 
 ## 3.3. Interaction en Temps Réel et Localisation
 - [x] Implémenter l'affichage de la position de l'utilisateur sur la carte.
@@ -30,9 +30,10 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [ ] Implémenter la fonctionnalité de prise de photo du POI lorsqu'un utilisateur est présent.
 - [ ] Implémenter la vérification de la photo (mécanisme à définir).
 - [x] Implémenter la gestion des commandes vocales pour les actions (« Je dépose les armes » / « Je capture la zone »).
-- [ ] Implémenter le QCM (Questionnaire à Choix Multiples) associé aux POI.
-- [ ] Implémenter la logique de capture de zone (succès si score utilisateur > score zone).
+- [x] Implémenter le QCM (Questionnaire à Choix Multiples) associé aux POI.
+- [x] Implémenter la logique de capture de zone (succès si score utilisateur > score zone).
 - [ ] Implémenter la pénalité en monnaie virtuelle en cas d'échec de capture.
+- [x] Implémenter la limitation de visite quotidienne des POI (un POI ne peut être visité qu'une fois par jour par utilisateur, avec grissage dans l'interface).
 
 ## 3.5. Monnaie Virtuelle et Bonus
 - [ ] Implémenter l'obtention de monnaie virtuelle via le passage aux POI.

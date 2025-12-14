@@ -1,5 +1,8 @@
 package com.example.vibing.models;
 
+import java.util.List;
+import java.util.Map;
+
 public class User {
     private String id;
     private String username;
@@ -7,6 +10,7 @@ public class User {
     private String teamName;
 private int money;
     private long createdAt;
+    private List<Map<String, String>> visitedPois;
 
     public User() {
     }
@@ -17,6 +21,7 @@ public User(String username, String teamId, String teamName) {
         this.teamName = teamName;
         this.money = 0;
         this.createdAt = System.currentTimeMillis();
+        this.visitedPois = null; // Initialize as empty list
     }
 
     public String getId() {
@@ -65,5 +70,13 @@ public int getMoney() {
 
     public void setCreatedAt(long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<Map<String, String>> getVisitedPois() {
+        return visitedPois;
+    }
+
+    public void setVisitedPois(List<Map<String, String>> visitedPois) {
+        this.visitedPois = visitedPois;
     }
 }

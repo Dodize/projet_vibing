@@ -35,6 +35,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+import java.util.HashMap;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class PoiScoreFragment extends Fragment {
 
@@ -204,6 +209,7 @@ public class PoiScoreFragment extends Fragment {
         // This is where you'll recognize specific phrases
         if (command.contains("je dépose les armes")) {
             poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
+            recordPoiVisit(); // Enregistrer la visite du POI
             Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
         } else if (command.contains("je capture la zone")) {
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
@@ -317,6 +323,9 @@ public class PoiScoreFragment extends Fragment {
 
     private void checkQuizResult(int quizScore) {
         try {
+            // Enregistrer la visite du POI (que ce soit succès ou échec)
+            recordPoiVisit();
+            
             // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
             boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
             
@@ -373,6 +382,73 @@ public class PoiScoreFragment extends Fragment {
             handleVoiceCommand(command.toLowerCase());
         });
         builder.show();
+    }
+    
+    private void recordPoiVisit() {
+        android.util.Log.d("POI_SCORE", "Recording visit for POI: " + poiId);
+        
+        try {
+            // Get user ID from SharedPreferences
+            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null && poiId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                // Get current user document
+                db.collection("users").document(userId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, String>> visitedPois = (List<Map<String, String>>) documentSnapshot.get("visitedPois");
+                            
+                            if (visitedPois == null) {
+                                visitedPois = new ArrayList<>();
+                            }
+                            
+                            // Check if already visited today
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                            String today = dateFormat.format(new Date());
+                            
+                            boolean alreadyVisitedToday = false;
+                            for (Map<String, String> visit : visitedPois) {
+                                if (poiId.equals(visit.get("poiId")) && today.equals(visit.get("visitDate"))) {
+                                    alreadyVisitedToday = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!alreadyVisitedToday) {
+                                // Add new visit
+                                Map<String, String> visit = new HashMap<>();
+                                visit.put("poiId", poiId);
+                                visit.put("visitDate", today);
+                                visitedPois.add(visit);
+                                
+                                // Update Firebase
+                                db.collection("users").document(userId)
+                                    .update("visitedPois", visitedPois)
+                                    .addOnSuccessListener(aVoid -> {
+                                        android.util.Log.d("POI_SCORE", "Successfully recorded visit for POI: " + poiId);
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        android.util.Log.e("POI_SCORE", "Error recording visit for POI: " + poiId, e);
+                                    });
+                            } else {
+                                android.util.Log.d("POI_SCORE", "POI " + poiId + " already visited today");
+                            }
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("POI_SCORE", "Error getting user document for visit recording", e);
+                    });
+            } else {
+                android.util.Log.w("POI_SCORE", "No user ID or POI ID available for visit recording");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("POI_SCORE", "Exception recording POI visit", e);
+        }
     }
 
     private String getTeamDisplayText(int teamId) {

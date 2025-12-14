@@ -31,6 +31,7 @@ Cette collection stocke les données spécifiques à chaque utilisateur, indexé
 | `teamId` | String | ID de l'équipe sélectionnée | "team_1" |
 | `teamName` | String | Nom de l'équipe de l'utilisateur | "Les Conquérants" |
 | `money` | Number | Monnaie de l'utilisateur | 500 |
+| `visitedPois` | Array | Liste des POI visités avec dates | `[{"poiId": "poi_capitole", "visitDate": "2025-12-14"}]` |
 | `createdAt` | Timestamp | Date de création du compte | Timestamp Firebase |
 
 ## 3. Collection : `pois` (Points d'Intérêt)
@@ -78,3 +79,4 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 5. **Calcul dynamique du score** : Le score des POIs décrémente de 1 point par heure depuis la dernière mise à jour (`lastUpdated`)
 6. **Capture de zone** : Pour capturer une zone, le joueur doit obtenir un score au QCM supérieur au score dynamique actuel de la zone
 7. **Timestamps** : `captureTime` est utilisé pour la capture initiale, `lastUpdated` pour toutes les mises à jour de score
+8. **Visites quotidiennes** : Le champ `visitedPois` dans la collection `users` suit les visites de POI par jour. Un POI ne peut être visité qu'une seule fois par jour par utilisateur. Le format est `[{"poiId": "poi_capitole", "visitDate": "2025-12-14"}]`
