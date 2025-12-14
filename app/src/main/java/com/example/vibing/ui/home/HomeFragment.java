@@ -31,6 +31,8 @@ import com.example.vibing.models.Poi;
 
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -835,6 +837,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         String teamName = prefs.getString("team_name", "Équipe inconnue");
         int money = prefs.getInt("money", 0);
         
+        // Load current money from Firebase
+        loadUserMoneyFromFirebase();
+        
         TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
         TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
@@ -850,6 +855,93 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
         }
+    }
+    
+    private void loadUserMoneyFromFirebase() {
+        android.util.Log.d("HOME_FRAGMENT", "Loading user money from Firebase");
+        
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            Integer money = documentSnapshot.getLong("money") != null ? 
+                                documentSnapshot.getLong("money").intValue() : 0;
+                            
+                            // Update local SharedPreferences with Firebase value
+                            SharedPreferences.Editor editor = prefs.edit();
+                            editor.putInt("money", money);
+                            editor.apply();
+                            
+                            // Update UI
+                            updateMoneyDisplay(money);
+                            
+                            android.util.Log.d("HOME_FRAGMENT", "Loaded user money from Firebase: " + money);
+                        } else {
+                            android.util.Log.w("HOME_FRAGMENT", "User document not found in Firebase");
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error loading user money from Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, using default money: 0");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception loading user money", e);
+        }
+    }
+    
+    private void updateMoneyDisplay(int money) {
+        TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        if (moneyTextView != null) {
+            moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void saveUserMoneyToFirebase(int money) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .update("money", money)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved money to Firebase: " + money);
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving money to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save money to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving user money", e);
+        }
+    }
+    
+    // Public method to allow other fragments to update money
+    public void updateUserMoney(int money) {
+        // Update local SharedPreferences
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("money", money);
+        editor.apply();
+        
+        // Update Firebase
+        saveUserMoneyToFirebase(money);
+        
+        // Update UI
+        updateMoneyDisplay(money);
+        
+        android.util.Log.d("HOME_FRAGMENT", "User money updated: " + money);
     }
     
 

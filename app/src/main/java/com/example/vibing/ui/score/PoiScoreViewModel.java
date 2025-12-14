@@ -8,6 +8,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Date;
+import android.content.SharedPreferences;
 
 public class PoiScoreViewModel extends ViewModel {
 
@@ -34,6 +35,8 @@ public class PoiScoreViewModel extends ViewModel {
         db = FirebaseFirestore.getInstance();
         mMoneyScore.setValue(0);
         mOwningTeam.setValue(0); // Default to neutral
+        
+        // Note: loadUserMoneyFromFirebase() will be called with Context from Fragment
     }
     
     public void initializePoi(String poiId, String poiName, int initialScore) {
@@ -386,10 +389,70 @@ public class PoiScoreViewModel extends ViewModel {
         return mMoneyScore;
     }
 
-    public void addMoneyBonus(int amount) {
+    public void addMoneyBonus(int amount, android.content.Context context) {
         Integer currentMoney = mMoneyScore.getValue();
         if (currentMoney != null) {
-            mMoneyScore.setValue(currentMoney + amount);
+            int newMoney = currentMoney + amount;
+            mMoneyScore.setValue(newMoney);
+            
+            // Save to Firebase
+            saveUserMoneyToFirebase(newMoney, context);
+            
+            android.util.Log.d("POI_SCORE", "Money bonus added: " + amount + ", new total: " + newMoney);
+        }
+    }
+    
+    public void loadUserMoneyFromFirebase(android.content.Context context) {
+        // Get current user ID from SharedPreferences
+        android.util.Log.d("POI_SCORE", "Loading user money from Firebase");
+        
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                db.collection("users").document(userId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            Integer money = documentSnapshot.getLong("money") != null ? 
+                                documentSnapshot.getLong("money").intValue() : 0;
+                            mMoneyScore.setValue(money);
+                            android.util.Log.d("POI_SCORE", "Loaded user money from Firebase: " + money);
+                        } else {
+                            android.util.Log.w("POI_SCORE", "User document not found in Firebase");
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("POI_SCORE", "Error loading user money from Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("POI_SCORE", "No user ID found, using default money: 0");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("POI_SCORE", "Exception loading user money", e);
+        }
+    }
+    
+    private void saveUserMoneyToFirebase(int money, android.content.Context context) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                db.collection("users").document(userId)
+                    .update("money", money)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("POI_SCORE", "Successfully saved money to Firebase: " + money);
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("POI_SCORE", "Error saving money to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("POI_SCORE", "No user ID found, cannot save money to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("POI_SCORE", "Exception saving user money", e);
         }
     }
     

@@ -70,6 +70,9 @@ public class PoiScoreFragment extends Fragment {
         // Initialize team names cache from Firebase
         initializeTeamNamesCache();
         
+        // Load user money from Firebase
+        poiScoreViewModel.loadUserMoneyFromFirebase(requireContext());
+        
         // Get POI data from arguments
         Bundle args = getArguments();
         if (args != null) {
@@ -200,7 +203,7 @@ public class PoiScoreFragment extends Fragment {
     private void handleVoiceCommand(String command) {
         // This is where you'll recognize specific phrases
         if (command.contains("je dépose les armes")) {
-            poiScoreViewModel.addMoneyBonus(25); // Bonus de 25€ pour déposer les armes
+            poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
             Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
         } else if (command.contains("je capture la zone")) {
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();

@@ -12,6 +12,7 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [x] **CORRECTION**: Supprimer la 5ème équipe ("Les Innovateurs") et corriger l'affichage des POI qui apparaissaient comme "Neutre" au lieu de leur couleur d'équipe.
 - [x] **CORRECTION**: Remplacement des noms d'équipes codés en dur dans PoiScoreFragment par les vrais noms depuis Firebase (Les Conquérants, Les Explorateurs, Les Stratèges, Les Gardiens) avec les emojis corrects.
 - [x] **AMÉLIORATION**: Implémentation d'un système de cache dynamique pour charger les noms des équipes depuis Firebase en temps réel pendant l'exécution de l'application, plus de noms codés en dur.
+- [x] **CORRECTION**: Implémentation de la gestion dynamique de l'argent - l'argent est maintenant chargé depuis Firebase au démarrage et sauvegardé dans Firebase quand un bonus est ajouté (commande "Je dépose les armes"). L'affichage est synchronisé entre la page principale et la page de score.
 
 ## 3.2. Système de Carte et de Zones
 - [x] Implémenter l'affichage de la carte basée sur OpenStreetMap.
