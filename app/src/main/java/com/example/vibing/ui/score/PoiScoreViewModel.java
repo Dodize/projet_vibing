@@ -118,20 +118,29 @@ public class PoiScoreViewModel extends ViewModel {
                             
                             // Get owning team from Firebase
                             int owningTeam = 0; // Default to neutral
+                            android.util.Log.d("POI_SCORE", "Extracting owning team for POI: " + poiName);
+                            android.util.Log.d("POI_SCORE", "Raw Firebase data keys: " + data.keySet());
+                            
                             if (data.containsKey("ownerTeamId")) {
                                 Object ownerObj = data.get("ownerTeamId");
-                                android.util.Log.d("POI_SCORE", "ownerTeamId from Firebase: " + ownerObj);
+                                android.util.Log.d("POI_SCORE", "Found ownerTeamId: " + ownerObj);
                                 if (ownerObj instanceof String) {
                                     String ownerTeamId = (String) ownerObj;
+                                    android.util.Log.d("POI_SCORE", "ownerTeamId string: " + ownerTeamId);
                                     if (ownerTeamId != null && !ownerTeamId.equals("null")) {
                                         try {
                                             owningTeam = Integer.parseInt(ownerTeamId.replace("team_", ""));
+                                            android.util.Log.d("POI_SCORE", "Parsed owningTeam: " + owningTeam);
                                         } catch (NumberFormatException e) {
                                             android.util.Log.e("POI_SCORE", "Error parsing ownerTeamId: " + ownerTeamId);
                                             owningTeam = 0;
                                         }
+                                    } else {
+                                        android.util.Log.d("POI_SCORE", "ownerTeamId is null or 'null'");
                                     }
                                 }
+                            } else {
+                                android.util.Log.d("POI_SCORE", "No ownerTeamId field found");
                             }
                             android.util.Log.d("POI_SCORE", "Final owningTeam for " + poiName + ": " + owningTeam);
                             mOwningTeam.setValue(owningTeam);

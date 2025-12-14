@@ -92,7 +92,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         double latitude;
         double longitude;
         int score;
-        int owningTeam; // 0 = neutral, 1-5 = teams
+         int owningTeam; // 0 = neutral, 1-4 = teams
         double radius; // Rayon de la zone cliquable en mètres
         Marker marker;
 
@@ -109,6 +109,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         PoiItem(String name, double latitude, double longitude, int score, int owningTeam, double radius) {
             this.name = name;
+            this.id = null; // No ID available in this constructor
             this.latitude = latitude;
             this.longitude = longitude;
             this.score = score;
@@ -189,7 +190,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Convert Firebase POIs to local PoiItems
                 for (Poi poi : pois) {
-                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam(), poi.getRadius());
+                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getId(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
                     poiList.add(poiItem);
                 }
                 
@@ -208,6 +209,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
                     poiMarker.setPosition(poiLocation);
                     poiMarker.setTitle(poi.name);
+                    android.util.Log.d("POI_DEBUG", "POI: " + poi.name + " | owningTeam: " + poi.owningTeam + " | TeamName: " + getTeamName(poi.owningTeam));
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
                     // Check if user is in zone to set appropriate icon
@@ -242,14 +244,16 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private String getTeamName(int teamId) {
+        android.util.Log.d("TEAM_DEBUG", "getTeamName called with teamId: " + teamId);
         switch (teamId) {
             case 0: return "Neutre";
-            case 1: return "Les Explorateurs";
-            case 2: return "Les Aventuriers";
-            case 3: return "Les Voyageurs";
-            case 4: return "Les Découvreurs";
-            case 5: return "Les Pionniers";
-            default: return "Inconnue";
+            case 1: return "Les Conquérants";
+            case 2: return "Les Explorateurs";
+            case 3: return "Les Stratèges";
+            case 4: return "Les Gardiens";
+            default: 
+                android.util.Log.d("TEAM_DEBUG", "Unknown teamId: " + teamId + ", returning 'Neutre'");
+                return "Neutre";
         }
     }
     
@@ -260,7 +264,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             case 2: return 0xFF0000FF; // Blue
             case 3: return 0xFF00FF00; // Green
             case 4: return 0xFFFFFF00; // Yellow
-            case 5: return 0xFF800080; // Purple
+
             default: return 0xFF808080; // Gray
         }
     }

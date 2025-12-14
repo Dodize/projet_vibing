@@ -135,37 +135,66 @@ public class HomeViewModel extends ViewModel {
         poi.setScore(100);
         
         // Extract owning team
+        android.util.Log.d("TEAM_DEBUG", "Extracting owning team for POI: " + poi.getName());
+        android.util.Log.d("TEAM_DEBUG", "Raw Firebase data keys: " + data.keySet());
+        android.util.Log.d("TEAM_DEBUG", "All POI data: " + data.toString());
+        
         if (data.containsKey("ownerTeamId")) {
             String teamId = (String) data.get("ownerTeamId");
+            android.util.Log.d("TEAM_DEBUG", "Found ownerTeamId: " + teamId + " for POI: " + poi.getName());
             if (teamId != null && !teamId.equals("null") && !teamId.isEmpty()) {
                 try {
                     // Extract number from "team_X" format
                     if (teamId.startsWith("team_")) {
                         String teamNumber = teamId.substring(5); // Remove "team_" prefix
                         int teamIdInt = Integer.parseInt(teamNumber);
+                        android.util.Log.d("TEAM_DEBUG", "Parsed team number: " + teamNumber + " -> teamIdInt: " + teamIdInt);
+                        
+                        // Convert team 5+ to neutral (0)
+                        if (teamIdInt >= 5) {
+                            teamIdInt = 0;
+                            android.util.Log.d("TEAM_DEBUG", "Converted team 5+ to neutral (0)");
+                        }
+                        
                         poi.setOwningTeam(teamIdInt);
+                        // Also set ownerTeamId for consistency
+                        poi.setOwnerTeamId("team_" + teamIdInt);
                     } else {
-                        // Try direct parsing as fallback
+                        // Handle direct number format
                         int teamIdInt = Integer.parseInt(teamId);
+                        android.util.Log.d("TEAM_DEBUG", "Parsed direct team number: " + teamIdInt);
+                        
+                        // Convert team 5+ to neutral (0)
+                        if (teamIdInt >= 5) {
+                            teamIdInt = 0;
+                            android.util.Log.d("TEAM_DEBUG", "Converted team 5+ to neutral (0)");
+                        }
+                        
                         poi.setOwningTeam(teamIdInt);
+                        // Also set ownerTeamId for consistency
+                        poi.setOwnerTeamId("team_" + teamIdInt);
                     }
+                    android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' assigned to team " + poi.getOwningTeam() + " (ownerTeamId: " + poi.getOwnerTeamId() + ")");
                 } catch (NumberFormatException e) {
                     poi.setOwningTeam(0); // neutral
                     android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' failed to parse team ID, setting to neutral");
+                    // Also set ownerTeamId for consistency
+                    poi.setOwnerTeamId("team_0");
                 }
             } else {
-                poi.setOwningTeam(0); // neutral
-            }
-        } else if (data.containsKey("owningTeam")) {
-            Object team = data.get("owningTeam");
-            if (team instanceof Number) {
-                int teamId = ((Number) team).intValue();
-                poi.setOwningTeam(teamId);
+                poi.setOwningTeam(0); // neutral by default
+                poi.setOwnerTeamId("team_0");
+                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has null ownerTeamId, setting to neutral");
             }
         } else {
-            // No team field found, setting to neutral
+            poi.setOwningTeam(0); // neutral by default
+            poi.setOwnerTeamId("team_0");
+            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has no ownerTeamId field, setting to neutral");
         }
         
         return poi;
     }
 }
+
+
+

@@ -28,6 +28,8 @@ import androidx.navigation.Navigation;
 
 import com.example.vibing.R;
 import com.example.vibing.databinding.FragmentPoiScoreBinding;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +44,9 @@ public class PoiScoreFragment extends Fragment {
     private Intent speechRecognizerIntent;
 
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    
+    // Team names cache
+    private java.util.Map<Integer, String> teamNamesCache = new java.util.HashMap<>();
     
     // POI data passed from HomeFragment
     private String poiName;
@@ -61,8 +66,11 @@ public class PoiScoreFragment extends Fragment {
         
         // Enable back button in toolbar
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-
-// Get POI data from arguments
+        
+        // Initialize team names cache from Firebase
+        initializeTeamNamesCache();
+        
+        // Get POI data from arguments
         Bundle args = getArguments();
         if (args != null) {
             poiName = args.getString("poiName");
@@ -358,27 +366,29 @@ public class PoiScoreFragment extends Fragment {
         builder.show();
     }
 
-private String getTeamDisplayText(int teamId) {
+    private String getTeamDisplayText(int teamId) {
         try {
-            switch (teamId) {
-                case 0:
-                    return "Zone neutre";
-                case 1:
-                    return "Équipe: Les Explorateurs 🔵";
-                case 2:
-                    return "Équipe: Les Aventuriers 🟢";
-                case 3:
-                    return "Équipe: Les Voyageurs 🟡";
-                case 4:
-                    return "Équipe: Les Découvreurs 🔴";
-                case 5:
-                    return "Équipe: Les Pionniers 🟣";
-                default:
-                    return "Zone neutre";
+            if (teamId == 0) {
+                return "Zone neutre";
             }
+            
+            // Get team name from cache or load from Firebase
+            String teamName = getTeamNameFromCache(teamId);
+            String emoji = getTeamEmoji(teamId);
+            return "Équipe: " + teamName + " " + emoji;
         } catch (Exception e) {
             android.util.Log.e("POI_SCORE", "Error in getTeamDisplayText: " + e.getMessage());
             return "Zone neutre";
+        }
+    }
+    
+    private String getTeamEmoji(int teamId) {
+        switch (teamId) {
+            case 1: return "🔴"; // Les Conquérants (Rouge)
+            case 2: return "🔵"; // Les Explorateurs (Bleu)
+            case 3: return "🟢"; // Les Stratèges (Vert)
+            case 4: return "🟡"; // Les Gardiens (Jaune)
+            default: return "⚪"; // Neutre
         }
     }
     
@@ -404,6 +414,12 @@ private String getTeamDisplayText(int teamId) {
         if (team == null) {
             team = poiScoreViewModel.getOwningTeam().getValue();
             android.util.Log.d("POI_SCORE", "Team was null, got from ViewModel: " + team);
+            
+            // If ViewModel team is still null, use the team from arguments
+            if (team == null && poiOwningTeam > 0) {
+                team = poiOwningTeam;
+                android.util.Log.d("POI_SCORE", "Using team from arguments: " + team);
+            }
         }
         
         // Update local owning team for quiz result
@@ -444,5 +460,55 @@ private String getTeamDisplayText(int teamId) {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+    
+    private void initializeTeamNamesCache() {
+        android.util.Log.d("TEAM_DEBUG", "Initializing team names cache from Firebase");
+        
+        // Initialize with default values
+        teamNamesCache.put(0, "Neutre");
+        teamNamesCache.put(1, "Les Conquérants");
+        teamNamesCache.put(2, "Les Explorateurs");
+        teamNamesCache.put(3, "Les Stratèges");
+        teamNamesCache.put(4, "Les Gardiens");
+        
+        // Load real team names from Firebase and update cache
+        try {
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            db.collection("teams")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    android.util.Log.d("TEAM_DEBUG", "Successfully loaded teams from Firebase");
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        String teamId = document.getId();
+                        String teamName = document.getString("name");
+                        
+                        // Extract team number from "team_X" format
+                        if (teamId.startsWith("team_")) {
+                            try {
+                                int teamNumber = Integer.parseInt(teamId.substring(5));
+                                if (teamName != null) {
+                                    teamNamesCache.put(teamNumber, teamName);
+                                    android.util.Log.d("TEAM_DEBUG", "Updated team name: " + teamNumber + " -> " + teamName);
+                                    
+                                    // Refresh display if already showing
+                                    updateDisplayText(null, null);
+                                }
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("TEAM_DEBUG", "Error parsing team ID: " + teamId, e);
+                            }
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("TEAM_DEBUG", "Error loading teams from Firebase", e);
+                });
+        } catch (Exception e) {
+            android.util.Log.e("TEAM_DEBUG", "Exception initializing team names cache", e);
+        }
+    }
+    
+    private String getTeamNameFromCache(int teamId) {
+        return teamNamesCache.getOrDefault(teamId, "Équipe " + teamId);
     }
 }
