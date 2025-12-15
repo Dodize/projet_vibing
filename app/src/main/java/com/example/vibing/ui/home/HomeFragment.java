@@ -11,11 +11,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.app.AlertDialog;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -69,6 +71,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private TextView currentInfoBubble;
     private Marker currentSelectedMarker;
     private HomeViewModel homeViewModel;
+    
+    // Variables pour le suivi des zones
+    private List<String> previouslyEnteredPoiNames = new ArrayList<>();
+    private boolean hasShownPopupForCurrentLocation = false;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -235,6 +241,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Force map refresh
                 mapView.invalidate();
+                
+                // Check for POI zones after POIs are loaded
+                checkForNewlyEnteredPoiZones();
             }
         });
     }
@@ -350,6 +359,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         poiListAdapter = new PoiListAdapter(new ArrayList<>(poiList));
         poiRecyclerView.setAdapter(poiListAdapter);
         
+        // Check for POI zones whenever distances are updated
+        checkForNewlyEnteredPoiZones();
+        
         mapView.invalidate();
     }
 
@@ -363,6 +375,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
         // Display user information from SharedPreferences
         displayUserInfo();
+        
+        // Setup test popup button
+        setupTestPopupButton();
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
@@ -448,6 +463,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Update POI distances when location changes
                 updatePoiDistancesAndList();
+                
+                // Check for newly entered POI zones and show popup
+                checkForNewlyEnteredPoiZones();
+                
                 mapView.invalidate();
             }
         };
@@ -700,6 +719,115 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         return distanceInMeters <= poi.radius;
     }
+    
+    private void checkForNewlyEnteredPoiZones() {
+        android.util.Log.d("POPUP_DEBUG", "checkForNewlyEnteredPoiZones called");
+        
+        if (poiList == null) {
+            android.util.Log.d("POPUP_DEBUG", "poiList is null");
+            return;
+        }
+        
+        if (currentUserLocation == null) {
+            android.util.Log.d("POPUP_DEBUG", "currentUserLocation is null");
+            return;
+        }
+        
+        android.util.Log.d("POPUP_DEBUG", "Checking " + poiList.size() + " POIs");
+        
+        List<PoiItem> currentlyEnteredPois = new ArrayList<>();
+        
+        // Find all POIs the user is currently in zone for
+        for (PoiItem poi : poiList) {
+            boolean inZone = isUserInPoiZone(poi);
+            android.util.Log.d("POPUP_DEBUG", "POI " + poi.name + " in zone: " + inZone);
+            if (inZone) {
+                currentlyEnteredPois.add(poi);
+            }
+        }
+        
+        android.util.Log.d("POPUP_DEBUG", "Currently in " + currentlyEnteredPois.size() + " zones");
+        android.util.Log.d("POPUP_DEBUG", "Previously in " + previouslyEnteredPoiNames.size() + " zones");
+        android.util.Log.d("POPUP_DEBUG", "hasShownPopupForCurrentLocation: " + hasShownPopupForCurrentLocation);
+        
+        // Check if this is a new entry (user wasn't in this POI zone before)
+        List<PoiItem> newlyEnteredPois = new ArrayList<>();
+        for (PoiItem currentPoi : currentlyEnteredPois) {
+            if (!previouslyEnteredPoiNames.contains(currentPoi.name)) {
+                newlyEnteredPois.add(currentPoi);
+                android.util.Log.d("POPUP_DEBUG", "Newly entered POI: " + currentPoi.name);
+            }
+        }
+        
+        // Show popup if user entered new POI zones
+        if (!newlyEnteredPois.isEmpty() && !hasShownPopupForCurrentLocation) {
+            android.util.Log.d("POPUP_DEBUG", "Should show popup for " + newlyEnteredPois.size() + " POIs");
+            showPoiQuizPopup(newlyEnteredPois);
+            hasShownPopupForCurrentLocation = true;
+        }
+        
+        // If user is not in any POI zone anymore, reset the popup flag
+        if (currentlyEnteredPois.isEmpty()) {
+            hasShownPopupForCurrentLocation = false;
+            android.util.Log.d("POPUP_DEBUG", "Reset popup flag - no zones");
+        }
+        
+        // Update the previously entered POIs list
+        previouslyEnteredPoiNames.clear();
+        for (PoiItem poi : currentlyEnteredPois) {
+            previouslyEnteredPoiNames.add(poi.name);
+        }
+    }
+    
+    private void showPoiQuizPopup(List<PoiItem> newlyEnteredPois) {
+        if (newlyEnteredPois.isEmpty()) {
+            return;
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        
+        if (newlyEnteredPois.size() == 1) {
+            // Single POI entered
+            PoiItem poi = newlyEnteredPois.get(0);
+            builder.setTitle("🎯 Zone de POI détectée!")
+                  .setMessage("Vous êtes dans la zone de " + poi.name + " !\n\nScore actuel: " + poi.score + "\nVoulez-vous lancer le quiz pour capturer ce POI ?");
+            
+            builder.setPositiveButton("Lancer le quiz", (dialog, which) -> {
+                navigateToPoiScore(poi);
+                dialog.dismiss();
+            });
+            
+        } else {
+            // Multiple POIs entered
+            StringBuilder message = new StringBuilder("Vous êtes dans la zone de plusieurs POIs !\n\n");
+            for (int i = 0; i < newlyEnteredPois.size(); i++) {
+                PoiItem poi = newlyEnteredPois.get(i);
+                message.append((i + 1)).append(". ").append(poi.name)
+                       .append(" (Score: ").append(poi.score).append(")\n");
+            }
+            message.append("\nQuel POI voulez-vous capturer ?");
+            
+            builder.setTitle("🎯 Plusieurs zones de POI détectées!")
+                  .setMessage(message.toString());
+            
+            // Create buttons for each POI
+            for (PoiItem poi : newlyEnteredPois) {
+                builder.setPositiveButton(poi.name, (dialog, which) -> {
+                    navigateToPoiScore(poi);
+                    dialog.dismiss();
+                });
+            }
+        }
+        
+        builder.setNegativeButton("Plus tard", (dialog, which) -> {
+            dialog.dismiss();
+        });
+        
+        builder.setCancelable(false); // Prevent dismissal by clicking outside
+        
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
 
     private void setupInfoBubble() {
         // Create a custom info bubble that will be added to the map's parent layout
@@ -822,6 +950,34 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void setupTestPopupButton() {
+        Button testButton = binding.getRoot().findViewById(R.id.test_popup_button);
+        if (testButton != null) {
+            testButton.setOnClickListener(v -> {
+                android.util.Log.d("POPUP_DEBUG", "Test button clicked - forcing zone check");
+                checkForNewlyEnteredPoiZones();
+                
+                // Also show a test popup if in any zone
+                if (poiList != null && currentUserLocation != null) {
+                    List<PoiItem> poisInZone = new ArrayList<>();
+                    for (PoiItem poi : poiList) {
+                        if (isUserInPoiZone(poi)) {
+                            poisInZone.add(poi);
+                        }
+                    }
+                    
+                    if (!poisInZone.isEmpty()) {
+                        android.util.Log.d("POPUP_DEBUG", "Forcing popup for " + poisInZone.size() + " POIs in zone");
+                        showPoiQuizPopup(poisInZone);
+                    } else {
+                        android.util.Log.d("POPUP_DEBUG", "No POIs in zone for test");
+                        Toast.makeText(getContext(), "Vous n'êtes dans aucune zone de POI", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
         }
     }
     

@@ -95,6 +95,16 @@ public class HomeViewModel extends ViewModel {
         pontNeuf.setOwningTeam(0);
         testPois.add(pontNeuf);
         
+        // POI de test avec les coordonnées spécifiées
+        Poi testPoi = new Poi();
+        testPoi.setId("poi_test_coordinates");
+        testPoi.setName("POI Test Coordonnées");
+        testPoi.setLatitude(43.60236021729008);
+        testPoi.setLongitude(1.4557650816708745);
+        testPoi.setScore(100);
+        testPoi.setOwningTeam(0);
+        testPois.add(testPoi);
+        
         pois.setValue(testPois);
     }
     
