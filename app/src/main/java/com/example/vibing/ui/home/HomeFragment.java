@@ -857,25 +857,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         bundle.putInt("poiScore", poi.score);
         bundle.putInt("poiOwningTeam", poi.owningTeam);
         
-        // Get current user's team ID
+// Get current user's team ID as string
         SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
-        // Try to get the integer version first, fallback to string parsing
-        int userTeamId = prefs.getInt("team_id_int", -1);
-        if (userTeamId == -1) {
-            String teamIdString = prefs.getString("team_id", "1"); // Default to team 1 if not set
-            try {
-                // Handle both "1" and "team_1" formats
-                if (teamIdString.startsWith("team_")) {
-                    userTeamId = Integer.parseInt(teamIdString.substring(5)); // Extract number after "team_"
-                } else {
-                    userTeamId = Integer.parseInt(teamIdString);
-                }
-            } catch (NumberFormatException e) {
-                android.util.Log.e("HOME_FRAGMENT", "Error parsing team_id: " + teamIdString, e);
-                userTeamId = 1; // Default fallback
-            }
-        }
-        bundle.putInt("userTeamId", userTeamId);
+        String userTeamId = prefs.getString("team_id", "team_1"); // Default to team_1 if not set
+        bundle.putString("userTeamId", userTeamId);
         
         // Navigate to PoiScoreFragment
         NavController navController = Navigation.findNavController(requireView());

@@ -353,12 +353,12 @@ public class PoiScoreViewModel extends ViewModel {
         return (currentTime - lastCaptureTime) < CAPTURE_GRACE_PERIOD_MILLIS;
     }
     
-    private void updateZoneInFirebase(int newScore, int teamId) {
+private void updateZoneInFirebase(int newScore, String teamId) {
         if (poiId != null) {
             long updateTime = System.currentTimeMillis();
             Map<String, Object> updates = new HashMap<>();
             updates.put("currentScore", newScore);
-            updates.put("ownerTeamId", teamId > 0 ? "team_" + teamId : null);
+            updates.put("ownerTeamId", teamId != null && !teamId.isEmpty() ? teamId : null);
             // Store both capture timestamp and last updated timestamp
             updates.put("captureTime", new java.util.Date(updateTime));
             updates.put("lastUpdated", new java.util.Date(updateTime));
@@ -462,19 +462,46 @@ public class PoiScoreViewModel extends ViewModel {
         // No automatic Firebase update - score is calculated on-the-fly
     }
     
-    public void captureZone(int newScore, int teamId) {
+public void captureZone(int newScore, String teamId) {
+        android.util.Log.d("POI_SCORE", "=== CAPTURE ZONE START ===");
+        android.util.Log.d("POI_SCORE", "captureZone called with newScore: " + newScore + ", teamId: " + teamId);
+        android.util.Log.d("POI_SCORE", "Current mCurrentScore before update: " + mCurrentScore.getValue());
+        android.util.Log.d("POI_SCORE", "Current mOwningTeam before update: " + mOwningTeam.getValue());
+        android.util.Log.d("POI_SCORE", "POI: " + poiName);
+        android.util.Log.d("POI_SCORE", "POI ID: " + poiId);
+        
+        // Capture grace period to prevent multiple captures in quick succession
+        if (wasRecentlyCaptured()) {
+            android.util.Log.d("POI_SCORE", "Capture ignored - recently captured within grace period");
+            return;
+        }
+        
+        // Extract team number for display (convert from "team_X" format)
+        int teamNumber = 0;
+        if (teamId != null && !teamId.isEmpty() && teamId.startsWith("team_")) {
+            try {
+                teamNumber = Integer.parseInt(teamId.substring(5));
+            } catch (NumberFormatException e) {
+                android.util.Log.e("POI_SCORE", "Error parsing teamId: " + teamId, e);
+                teamNumber = 0;
+            }
+        }
+        
+        // Update LiveData with new values immediately
         mCurrentScore.setValue(newScore);
-        mOwningTeam.setValue(teamId);
-        justCaptured = true; // Mark as just captured to prevent immediate decrement
+        mOwningTeam.setValue(teamNumber);
         
-        // Store capture time to prevent immediate time-based decrement
+        android.util.Log.d("POI_SCORE", "Current mCurrentScore after setValue: " + mCurrentScore.getValue());
+        android.util.Log.d("POI_SCORE", "Current mOwningTeam after setValue: " + mOwningTeam.getValue());
+        
+        // Set justCaptured flag and last capture time
+        justCaptured = true;
         lastCaptureTime = System.currentTimeMillis();
-        lastKnownScoreTime = System.currentTimeMillis(); // Reset local timestamp
         
-        android.util.Log.d("POI_SCORE", "CAPTURE: Setting score to " + newScore + " and team to " + teamId);
-        
-        // Update Firebase immediately with capture data
+        // Update in Firebase with full team string
         updateZoneInFirebase(newScore, teamId);
+        
+        android.util.Log.d("POI_SCORE", "=== CAPTURE ZONE END ===");
     }
     
     /**
@@ -538,7 +565,7 @@ public class PoiScoreViewModel extends ViewModel {
      * @param playerTeam L'équipe du joueur
      * @return true si le joueur gagne, false sinon
      */
-    public boolean handleQcmResult(int playerScore, int playerTeam) {
+public boolean handleQcmResult(int playerScore, String playerTeam) {
         // Utiliser le score dynamique déjà calculé et affiché
         Integer dynamicZoneScore = mCurrentScore.getValue();
         if (dynamicZoneScore == null) {

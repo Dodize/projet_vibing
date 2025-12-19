@@ -1,22 +1,25 @@
 package com.example.vibing.ui.score;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.app.AlertDialog;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -25,12 +28,15 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
-
 import com.example.vibing.R;
 import com.example.vibing.databinding.FragmentPoiScoreBinding;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import com.example.vibing.models.Poi;
+import com.example.vibing.models.QuizQuestion;
+import com.example.vibing.repository.QuizRepository;
+import com.example.vibing.ui.score.ScoreViewModel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +53,8 @@ public class PoiScoreFragment extends Fragment {
     private PoiScoreViewModel poiScoreViewModel;
     private SpeechRecognizer speechRecognizer;
     private Intent speechRecognizerIntent;
+    private QuizRepository quizRepository;
+    private AlertDialog loadingDialog;
 
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     
@@ -59,12 +67,15 @@ public class PoiScoreFragment extends Fragment {
     private float poiLatitude;
     private float poiLongitude;
     private int poiScore;
-    private int poiOwningTeam;
-    private int userTeamId; // Current user's team
+    private String poiOwningTeam;
+    private String userTeamId; // Current user's team
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
+        Log.i("PoiScoreFragment", "onCreateView() called");
         poiScoreViewModel = new ViewModelProvider(this).get(PoiScoreViewModel.class);
+        quizRepository = new QuizRepository(requireContext());
+        Log.i("PoiScoreFragment", "QuizRepository created");
 
         binding = FragmentPoiScoreBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
@@ -86,8 +97,10 @@ public class PoiScoreFragment extends Fragment {
             poiLatitude = args.getFloat("poiLatitude");
             poiLongitude = args.getFloat("poiLongitude");
             poiScore = args.getInt("poiScore");
-            poiOwningTeam = args.getInt("poiOwningTeam");
-            userTeamId = args.getInt("userTeamId", 1); // Default to team 1 if not provided
+            // Convert int to string for consistency
+            int owningTeamInt = args.getInt("poiOwningTeam", 0);
+            poiOwningTeam = owningTeamInt > 0 ? "team_" + owningTeamInt : null;
+            userTeamId = args.getString("userTeamId", "team_1"); // Default to team_1 if not provided
             
             // Initialize POI score with actual POI data
             try {
@@ -107,8 +120,8 @@ public class PoiScoreFragment extends Fragment {
             poiName = "Zone inconnue";
             poiId = "unknown_zone";
             poiScore = 100;
-            poiOwningTeam = 0;
-            userTeamId = 1;
+            poiOwningTeam = null;
+            userTeamId = "team_1";
             if (poiScoreViewModel.getCurrentScore().getValue() == null) {
                 poiScoreViewModel.setScore(100);
             }
@@ -206,15 +219,19 @@ public class PoiScoreFragment extends Fragment {
     }
 
     private void handleVoiceCommand(String command) {
+        Log.i("PoiScoreFragment", "handleVoiceCommand() called with: " + command);
         // This is where you'll recognize specific phrases
         if (command.contains("je dépose les armes")) {
             poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
             recordPoiVisit(); // Enregistrer la visite du POI
             Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
         } else if (command.contains("je capture la zone")) {
+            Log.i("PoiScoreFragment", "Command: je capture la zone - calling showQuizDialog()");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
+            showLoadingDialog();
             showQuizDialog();
         } else {
+            Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
             Toast.makeText(getContext(), "Commande non reconnue: " + command, Toast.LENGTH_LONG).show();
         }
     }
@@ -238,41 +255,153 @@ public class PoiScoreFragment extends Fragment {
     }
 
     private void showQuizDialog() {
-        // Quiz questions data
-        List<QuizQuestion> questions = Arrays.asList(
-            new QuizQuestion("Quelle est la capitale de la France?", 
+        Log.i("PoiScoreFragment", "showQuizDialog() called");
+        
+        // Récupérer les questions depuis l'API QuizAPI
+        quizRepository.getQuizQuestions(new QuizRepository.QuizCallback() {
+            @Override
+            public void onSuccess(List<QuizQuestion> questions) {
+                Log.i("PoiScoreFragment", "API success with " + questions.size() + " questions");
+                hideLoadingDialog();
+                // Utiliser les questions de l'API
+                showApiQuestionDialog(questions, 0, 0);
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                hideLoadingDialog();
+                // En cas d'erreur, utiliser les questions par défaut
+                Log.w("PoiScoreFragment", "Erreur API: " + errorMessage + ", utilisation des questions par défaut");
+                showDefaultQuestionDialog();
+            }
+        });
+    }
+
+    private void showLoadingDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Chargement des questions");
+        builder.setMessage("Veuillez patienter pendant que nous chargeons les questions...");
+        builder.setCancelable(false);
+        
+        loadingDialog = builder.create();
+        loadingDialog.show();
+    }
+
+    private void hideLoadingDialog() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+            loadingDialog = null;
+        }
+    }
+
+    private void showDefaultQuestionDialog() {
+        // Questions par défaut (fallback) - MODIFIÉES pour tester
+        List<DefaultQuizQuestion> questions = Arrays.asList(
+            new DefaultQuizQuestion("TEST API - Quelle est la capitale de la France?", 
                 Arrays.asList("Londres", "Paris", "Berlin", "Madrid"), 1),
-            new QuizQuestion("Combien font 2 + 2?", 
+            new DefaultQuizQuestion("TEST API - Combien font 2 + 2?", 
                 Arrays.asList("3", "4", "5", "6"), 1),
-            new QuizQuestion("Quelle couleur est le ciel?", 
+            new DefaultQuizQuestion("TEST API - Quelle couleur est le ciel?", 
                 Arrays.asList("Rouge", "Vert", "Bleu", "Jaune"), 2),
-            new QuizQuestion("Quel est le plus grand océan?", 
+            new DefaultQuizQuestion("TEST API - Quel est le plus grand océan?", 
                 Arrays.asList("Atlantique", "Indien", "Arctique", "Pacifique"), 3),
-            new QuizQuestion("Combien y a-t-il de jours dans une semaine?", 
+            new DefaultQuizQuestion("TEST API - Combien y-a-t-il de jours dans une semaine?", 
                 Arrays.asList("5", "6", "7", "8"), 2),
-            new QuizQuestion("Quel est le plus grand pays du monde en superficie ?",
+            new DefaultQuizQuestion("TEST API - Quel est le plus grand pays du monde en superficie ?",
                 Arrays.asList("Chine", "Canada", "Russie", "États-Unis"), 2),
-            new QuizQuestion("Quel est l'animal le plus rapide du monde ?",
+            new DefaultQuizQuestion("TEST API - Quel est l'animal le plus rapide du monde ?",
                 Arrays.asList("Guépard", "Faucon pèlerin", "Antilope", "Lion"), 1),
-            new QuizQuestion("Quelle est la couleur du cheval blanc d'Henri IV ?",
+            new DefaultQuizQuestion("TEST API - Quelle est la couleur du cheval blanc d'Henri IV ?",
                 Arrays.asList("Noir", "Blanc", "Gris", "Marron"), 1),
-            new QuizQuestion("Combien de continents y a-t-il sur Terre ?",
+            new DefaultQuizQuestion("TEST API - Combien de continents y-a-t-il sur Terre ?",
                 Arrays.asList("5", "6", "7", "8"), 2),
-            new QuizQuestion("Quel est le plus haut sommet du monde ?",
+            new DefaultQuizQuestion("TEST API - Quel est le plus haut sommet du monde ?",
                 Arrays.asList("Mont Blanc", "K2", "Everest", "Kangchenjunga"), 2)
         );
 
-        showQuestionDialog(questions, 0, 0);
+        showDefaultQuestionDialog(questions, 0, 0);
     }
 
-    private void showQuestionDialog(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
+    private void showApiQuestionDialog(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
+        Log.i("PoiScoreFragment", "showApiQuestionDialog() called");
+        
+        // S'assurer qu'on est sur le thread UI
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            new Handler(Looper.getMainLooper()).post(() -> showApiQuestionDialogOnUiThread(questions, currentQuestionIndex, currentScore));
+        } else {
+            showApiQuestionDialogOnUiThread(questions, currentQuestionIndex, currentScore);
+        }
+    }
+    
+
+    
+    private void showApiQuestionDialogOnUiThread(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
+        Log.i("PoiScoreFragment", "showApiQuestionDialogOnUiThread() called");
+        
+        if (currentQuestionIndex >= questions.size()) {
+            // Quiz finished, check if score beats zone score
+            checkQuizResult(currentScore);
+            return;
+        }
+        
+        QuizQuestion currentQuestion = questions.get(currentQuestionIndex);
+        final int finalScore = currentScore; // Make effectively final for lambda
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Quiz de capture de zone - Question " + (currentQuestionIndex + 1) + "/" + questions.size());
+
+        // Create a custom layout for the quiz
+        View quizView = getLayoutInflater().inflate(R.layout.quiz_dialog, null);
+        builder.setView(quizView);
+
+        TextView questionText = quizView.findViewById(R.id.text_question);
+        RadioGroup radioGroup = quizView.findViewById(R.id.radio_group_quiz);
+        Button submitButton = quizView.findViewById(R.id.button_submit_quiz);
+
+        questionText.setText(currentQuestion.getQuestion());
+
+        // Clear existing radio buttons
+        radioGroup.removeAllViews();
+        
+        // Add radio buttons for each option from API
+        List<String> options = getOptionsFromApiQuestion(currentQuestion);
+        for (int i = 0; i < options.size(); i++) {
+            RadioButton radioButton = new RadioButton(getContext());
+            radioButton.setText(options.get(i));
+            radioButton.setId(i);
+            radioGroup.addView(radioButton);
+        }
+
+        AlertDialog dialog = builder.create();
+
+        submitButton.setOnClickListener(v -> {
+            int selectedId = radioGroup.getCheckedRadioButtonId();
+            if (selectedId != -1) {
+                int newScore = finalScore;
+                if (isCorrectAnswer(currentQuestion, selectedId)) {
+                    newScore += 10; // Add 10 points for correct answer
+                    Toast.makeText(getContext(), "Bonne réponse! +10 points", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(), "Mauvaise réponse!", Toast.LENGTH_SHORT).show();
+                }
+                dialog.dismiss();
+                showApiQuestionDialog(questions, currentQuestionIndex + 1, newScore);
+            } else {
+                Toast.makeText(getContext(), "Veuillez sélectionner une réponse", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showDefaultQuestionDialog(List<DefaultQuizQuestion> questions, int currentQuestionIndex, int currentScore) {
         if (currentQuestionIndex >= questions.size()) {
             // Quiz finished, check if score beats zone score
             checkQuizResult(currentScore);
             return;
         }
 
-        QuizQuestion currentQuestion = questions.get(currentQuestionIndex);
+        DefaultQuizQuestion currentQuestion = questions.get(currentQuestionIndex);
         final int finalScore = currentScore; // Make effectively final for lambda
         
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
@@ -312,7 +441,7 @@ public class PoiScoreFragment extends Fragment {
                     Toast.makeText(getContext(), "Mauvaise réponse!", Toast.LENGTH_SHORT).show();
                 }
                 dialog.dismiss();
-                showQuestionDialog(questions, currentQuestionIndex + 1, newScore);
+                showDefaultQuestionDialog(questions, currentQuestionIndex + 1, newScore);
             } else {
                 Toast.makeText(getContext(), "Veuillez sélectionner une réponse", Toast.LENGTH_SHORT).show();
             }
@@ -355,13 +484,37 @@ public class PoiScoreFragment extends Fragment {
         }
     }
 
-    // Helper class for quiz questions
-    private static class QuizQuestion {
+    // Helper methods for API questions
+    private List<String> getOptionsFromApiQuestion(QuizQuestion question) {
+        List<String> options = new ArrayList<>();
+        List<QuizQuestion.Answer> answers = question.getAnswers();
+        
+        if (answers != null) {
+            for (QuizQuestion.Answer answer : answers) {
+                options.add(answer.getAnswerText());
+            }
+        }
+        
+        return options;
+    }
+
+    private boolean isCorrectAnswer(QuizQuestion question, int selectedIndex) {
+        List<QuizQuestion.Answer> answers = question.getAnswers();
+        
+        if (answers != null && selectedIndex < answers.size()) {
+            return answers.get(selectedIndex).isValid();
+        }
+        
+        return false;
+    }
+
+    // Helper class for default quiz questions (fallback)
+    private static class DefaultQuizQuestion {
         private String question;
         private List<String> options;
         private int correctAnswerIndex;
 
-        public QuizQuestion(String question, List<String> options, int correctAnswerIndex) {
+        public DefaultQuizQuestion(String question, List<String> options, int correctAnswerIndex) {
             this.question = question;
             this.options = options;
             this.correctAnswerIndex = correctAnswerIndex;
@@ -451,9 +604,9 @@ public class PoiScoreFragment extends Fragment {
         }
     }
 
-    private String getTeamDisplayText(int teamId) {
+    private String getTeamDisplayText(String teamId) {
         try {
-            if (teamId == 0) {
+            if (teamId == null || teamId.isEmpty()) {
                 return "Zone neutre";
             }
             
@@ -467,12 +620,12 @@ public class PoiScoreFragment extends Fragment {
         }
     }
     
-    private String getTeamEmoji(int teamId) {
+    private String getTeamEmoji(String teamId) {
         switch (teamId) {
-            case 1: return "🔴"; // Les Conquérants (Rouge)
-            case 2: return "🔵"; // Les Explorateurs (Bleu)
-            case 3: return "🟢"; // Les Stratèges (Vert)
-            case 4: return "🟡"; // Les Gardiens (Jaune)
+            case "team_1": return "🔴"; // Les Conquérants (Rouge)
+            case "team_2": return "🔵"; // Les Explorateurs (Bleu)
+            case "team_3": return "🟢"; // Les Stratèges (Vert)
+            case "team_4": return "🟡"; // Les Gardiens (Jaune)
             default: return "⚪"; // Neutre
         }
     }
@@ -501,19 +654,23 @@ public class PoiScoreFragment extends Fragment {
             android.util.Log.d("POI_SCORE", "Team was null, got from ViewModel: " + team);
             
             // If ViewModel team is still null, use the team from arguments
-            if (team == null && poiOwningTeam > 0) {
-                team = poiOwningTeam;
+            if (team == null && poiOwningTeam != null && !poiOwningTeam.isEmpty()) {
+                // Use the string team directly
+                team = 0; // Keep display compatibility with ViewModel
                 android.util.Log.d("POI_SCORE", "Using team from arguments: " + team);
             }
         }
         
         // Update local owning team for quiz result
         if (team != null) {
-            poiOwningTeam = team;
+            // Convert int team to string for consistency
+            poiOwningTeam = team > 0 ? "team_" + team : null;
         }
         
         String displayText = poiName != null ? poiName : "Zone inconnue";
-        displayText += "\n" + getTeamDisplayText(team != null ? team : 0);
+        // Use the string team for display
+        String displayTeam = (team != null && team > 0) ? ("team_" + team) : (poiOwningTeam != null ? poiOwningTeam : null);
+        displayText += "\n" + getTeamDisplayText(displayTeam);
         displayText += "\nScore de la zone: " + (score != null ? score : 0);
         
         android.util.Log.d("POI_SCORE", "Final display text: " + displayText);
@@ -593,7 +750,29 @@ public class PoiScoreFragment extends Fragment {
         }
     }
     
-    private String getTeamNameFromCache(int teamId) {
-        return teamNamesCache.getOrDefault(teamId, "Équipe " + teamId);
+private String getTeamNameFromCache(String teamId) {
+        // First try to get from cache (convert to int for cache lookup)
+        int teamNumber = 0;
+        if (teamId != null && teamId.startsWith("team_")) {
+            try {
+                teamNumber = Integer.parseInt(teamId.substring(5));
+            } catch (NumberFormatException e) {
+                teamNumber = 0;
+            }
+        }
+        
+        String teamName = teamNamesCache.get(teamNumber);
+        if (teamName != null) {
+            return teamName;
+        }
+        
+// If not in cache, return default based on teamId
+        switch (teamId) {
+            case "team_1": return "Les Conquérants";
+            case "team_2": return "Les Explorateurs";
+            case "team_3": return "Les Stratèges";
+            case "team_4": return "Les Gardiens";
+            default: return "Équipe inconnue";
+        }
     }
 }
