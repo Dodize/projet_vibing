@@ -221,10 +221,16 @@ public class PoiScoreFragment extends Fragment {
     private void handleVoiceCommand(String command) {
         Log.i("PoiScoreFragment", "handleVoiceCommand() called with: " + command);
         // This is where you'll recognize specific phrases
-        if (command.contains("je dépose les armes")) {
+if (command.contains("je dépose les armes")) {
             poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
             recordPoiVisit(); // Enregistrer la visite du POI
             Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
+            
+            // Retourner à la carte après le bonus pour éviter les actions multiples
+            new android.os.Handler().postDelayed(() -> {
+                NavController navController = Navigation.findNavController(requireView());
+                navController.navigateUp(); // Retour à la page principale pour recharger la carte
+            }, 2000); // 2 secondes de délai
         } else if (command.contains("je capture la zone")) {
             Log.i("PoiScoreFragment", "Command: je capture la zone - calling showQuizDialog()");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
