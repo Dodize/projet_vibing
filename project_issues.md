@@ -32,11 +32,11 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 - [x] Implémenter la gestion des commandes vocales pour les actions (« Je dépose les armes » / « Je capture la zone »).
 - [x] Implémenter le QCM (Questionnaire à Choix Multiples) associé aux POI.
 - [x] Implémenter la logique de capture de zone (succès si score utilisateur > score zone).
-- [ ] Implémenter la pénalité en monnaie virtuelle en cas d'échec de capture.
+- [x] Implémenter la pénalité en monnaie virtuelle en cas d'échec de capture.
 - [x] Implémenter la limitation de visite quotidienne des POI (un POI ne peut être visité qu'une fois par jour par utilisateur, avec grissage dans l'interface).
 
 ## 3.5. Monnaie Virtuelle et Bonus
-- [ ] Implémenter l'obtention de monnaie virtuelle via le passage aux POI.
+- [x] Implémenter l'obtention de monnaie virtuelle via le passage aux POI.
 - [ ] Implémenter l'obtention de monnaie virtuelle via le podomètre (marche).
 - [ ] Implémenter l'utilisation de la monnaie virtuelle pour des bonus (figer score / augmenter score QCM).
 

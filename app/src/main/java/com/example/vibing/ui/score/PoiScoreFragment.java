@@ -476,10 +476,18 @@ if (command.contains("je dépose les armes")) {
                         navController.navigateUp(); // Retour à la page principale pour recharger la carte
                     }, 2000); // 2 secondes de délai
                 }
-            } else {
+} else {
                 // Échec : le score utilisateur est inférieur ou égal au score dynamique de la zone
                 if (getContext() != null) {
-                    Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + (poiName != null ? poiName : "inconnue") + ".", Toast.LENGTH_LONG).show();
+                    // Pénalité de 10€ pour l'échec du quiz
+                    poiScoreViewModel.addMoneyPenalty(10, requireContext());
+                    Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + (poiName != null ? poiName : "inconnue") + ". Pénalité de 10€ appliquée.", Toast.LENGTH_LONG).show();
+                    
+                    // Attendre un peu avant de retourner à la page principale
+                    new android.os.Handler().postDelayed(() -> {
+                        NavController navController = Navigation.findNavController(requireView());
+                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
+                    }, 2000); // 2 secondes de délai
                 }
             }
         } catch (Exception e) {

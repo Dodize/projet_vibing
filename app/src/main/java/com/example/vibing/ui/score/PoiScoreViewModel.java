@@ -389,7 +389,7 @@ private void updateZoneInFirebase(int newScore, String teamId) {
         return mMoneyScore;
     }
 
-    public void addMoneyBonus(int amount, android.content.Context context) {
+public void addMoneyBonus(int amount, android.content.Context context) {
         Integer currentMoney = mMoneyScore.getValue();
         if (currentMoney != null) {
             int newMoney = currentMoney + amount;
@@ -399,6 +399,19 @@ private void updateZoneInFirebase(int newScore, String teamId) {
             saveUserMoneyToFirebase(newMoney, context);
             
             android.util.Log.d("POI_SCORE", "Money bonus added: " + amount + ", new total: " + newMoney);
+        }
+    }
+    
+    public void addMoneyPenalty(int amount, android.content.Context context) {
+        Integer currentMoney = mMoneyScore.getValue();
+        if (currentMoney != null) {
+            int newMoney = Math.max(0, currentMoney - amount); // Empêtrer de passer en négatif
+            mMoneyScore.setValue(newMoney);
+            
+            // Save to Firebase
+            saveUserMoneyToFirebase(newMoney, context);
+            
+            android.util.Log.d("POI_SCORE", "Money penalty applied: " + amount + ", new total: " + newMoney);
         }
     }
     
