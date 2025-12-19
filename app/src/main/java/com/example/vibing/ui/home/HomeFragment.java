@@ -1034,7 +1034,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         return false;
     }
     
-    private void recordPoiVisit(String poiId) {
+private void recordPoiVisit(String poiId) {
         if (visitedPois == null) {
             visitedPois = new ArrayList<>();
         }
@@ -1042,22 +1042,29 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         String today = dateFormat.format(new Date());
         
-        // Check if already visited today
-        if (isPoiVisitedToday(poiId)) {
-            android.util.Log.d("HOME_FRAGMENT", "POI " + poiId + " already visited today");
-            return;
+        // Check if POI already exists and update visit date, or add new visit
+        boolean poiFound = false;
+        for (Map<String, String> visit : visitedPois) {
+            if (poiId.equals(visit.get("poiId"))) {
+                // Update existing visit date
+                visit.put("visitDate", today);
+                poiFound = true;
+                android.util.Log.d("HOME_FRAGMENT", "Updated visit date for existing POI: " + poiId + " to " + today);
+                break;
+            }
         }
         
-        // Add new visit
-        Map<String, String> visit = new HashMap<>();
-        visit.put("poiId", poiId);
-        visit.put("visitDate", today);
-        visitedPois.add(visit);
+        if (!poiFound) {
+            // Add new visit
+            Map<String, String> visit = new HashMap<>();
+            visit.put("poiId", poiId);
+            visit.put("visitDate", today);
+            visitedPois.add(visit);
+            android.util.Log.d("HOME_FRAGMENT", "Added new visit for POI: " + poiId + " on " + today);
+        }
         
         // Save to Firebase
         saveVisitedPoisToFirebase();
-        
-        android.util.Log.d("HOME_FRAGMENT", "Recorded visit for POI: " + poiId + " on " + today);
     }
     
     private void saveVisitedPoisToFirebase() {

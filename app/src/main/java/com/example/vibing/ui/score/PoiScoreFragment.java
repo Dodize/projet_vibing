@@ -574,37 +574,56 @@ if (command.contains("je dépose les armes")) {
                                 visitedPois = new ArrayList<>();
                             }
                             
-                            // Check if already visited today
+// Check if POI already exists and update visit date, or add new visit
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                             String today = dateFormat.format(new Date());
                             
-                            boolean alreadyVisitedToday = false;
-                            for (Map<String, String> visit : visitedPois) {
-                                if (poiId.equals(visit.get("poiId")) && today.equals(visit.get("visitDate"))) {
-                                    alreadyVisitedToday = true;
+                            android.util.Log.d("POI_SCORE", "Checking POI " + poiId + " in visitedPois list of size: " + visitedPois.size());
+                            
+                            boolean poiFound = false;
+                            int existingIndex = -1;
+                            
+                            // First pass: find if POI exists and its index
+                            for (int i = 0; i < visitedPois.size(); i++) {
+                                Map<String, String> visit = visitedPois.get(i);
+                                if (poiId.equals(visit.get("poiId"))) {
+                                    existingIndex = i;
+                                    poiFound = true;
+                                    android.util.Log.d("POI_SCORE", "Found existing POI at index " + i + " with current date: " + visit.get("visitDate"));
                                     break;
                                 }
                             }
                             
-                            if (!alreadyVisitedToday) {
+                            if (poiFound && existingIndex >= 0) {
+                                // Update existing visit date
+                                Map<String, String> existingVisit = visitedPois.get(existingIndex);
+                                existingVisit.put("visitDate", today);
+                                android.util.Log.d("POI_SCORE", "Updated visit date for existing POI: " + poiId + " to " + today);
+                            } else {
                                 // Add new visit
                                 Map<String, String> visit = new HashMap<>();
                                 visit.put("poiId", poiId);
                                 visit.put("visitDate", today);
                                 visitedPois.add(visit);
-                                
-                                // Update Firebase
-                                db.collection("users").document(userId)
-                                    .update("visitedPois", visitedPois)
-                                    .addOnSuccessListener(aVoid -> {
-                                        android.util.Log.d("POI_SCORE", "Successfully recorded visit for POI: " + poiId);
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        android.util.Log.e("POI_SCORE", "Error recording visit for POI: " + poiId, e);
-                                    });
-                            } else {
-                                android.util.Log.d("POI_SCORE", "POI " + poiId + " already visited today");
+                                android.util.Log.d("POI_SCORE", "Added new visit for POI: " + poiId + " on " + today);
                             }
+                            
+// Log final state before saving
+                            android.util.Log.d("POI_SCORE", "Final visitedPois list size: " + visitedPois.size());
+                            for (int i = 0; i < visitedPois.size(); i++) {
+                                Map<String, String> visit = visitedPois.get(i);
+                                android.util.Log.d("POI_SCORE", "Entry " + i + ": poiId=" + visit.get("poiId") + ", visitDate=" + visit.get("visitDate"));
+                            }
+                            
+// Update Firebase
+                            db.collection("users").document(userId)
+                                .update("visitedPois", visitedPois)
+                                .addOnSuccessListener(aVoid -> {
+                                    android.util.Log.d("POI_SCORE", "Successfully updated visitedPois in Firebase for POI: " + poiId);
+                                })
+                                .addOnFailureListener(e -> {
+                                    android.util.Log.e("POI_SCORE", "Error updating visitedPois in Firebase", e);
+                                });
                         }
                     })
                     .addOnFailureListener(e -> {
