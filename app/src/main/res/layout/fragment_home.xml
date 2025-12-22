@@ -84,6 +84,9 @@
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:padding="12dp"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false"
+            android:scrollbarAlwaysDrawVerticalTrack="true"
             tools:listitem="@layout/list_item_poi" />
 
     </com.google.android.material.card.MaterialCardView>
