@@ -161,8 +161,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 holder.poiDistanceTextView.setTextColor(0xFF808080); // Gray text
                 holder.itemView.setAlpha(0.6f); // Semi-transparent
             } else {
-                holder.poiNameTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
-                holder.poiDistanceTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
+                // Use proper theme colors for better visibility
+                holder.poiNameTextView.setTextColor(getResources().getColor(R.color.text_dark, null));
+                holder.poiDistanceTextView.setTextColor(getResources().getColor(R.color.text_secondary, null));
                 holder.itemView.setAlpha(1.0f); // Fully opaque
             }
             
