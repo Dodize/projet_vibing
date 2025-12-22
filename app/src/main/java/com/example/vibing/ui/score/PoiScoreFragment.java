@@ -104,7 +104,6 @@ public class PoiScoreFragment extends Fragment {
             
             // Initialize POI score with actual POI data
             try {
-                android.util.Log.d("POI_SCORE", "Initializing POI: " + poiName + " with ID: " + poiId + " and score: " + poiScore + " owned by team: " + poiOwningTeam);
                 poiScoreViewModel.initializePoi(poiId, poiName, poiScore);
                 // loadFromFirebase() is now called automatically in initializePoi()
             } catch (Exception e) {
@@ -115,7 +114,6 @@ public class PoiScoreFragment extends Fragment {
                 }
             }
         } else {
-            android.util.Log.e("POI_SCORE", "Arguments bundle is null");
             // Set default values
             poiName = "Zone inconnue";
             poiId = "unknown_zone";
@@ -130,17 +128,11 @@ public class PoiScoreFragment extends Fragment {
         final TextView textView = binding.textScore;
         // Observe score changes
         poiScoreViewModel.getCurrentScore().observe(getViewLifecycleOwner(), score -> {
-            android.util.Log.d("POI_SCORE", "=== FRAGMENT SCORE OBSERVER CALLBACK ===");
-            android.util.Log.d("POI_SCORE", "Score observed in fragment: " + score + " for POI: " + poiName);
-            android.util.Log.d("POI_SCORE", "Score is null: " + (score == null));
             if (score != null) {
-                android.util.Log.d("POI_SCORE", "About to call updateDisplayText with score: " + score);
                 updateDisplayText(score, null);
-                android.util.Log.d("POI_SCORE", "updateDisplayText completed");
             } else {
                 android.util.Log.w("POI_SCORE", "Score is null, not updating display");
             }
-            android.util.Log.d("POI_SCORE", "=== FRAGMENT SCORE OBSERVER END ===");
         });
         
         // Observe team changes
@@ -552,8 +544,6 @@ if (command.contains("je dépose les armes")) {
     }
     
     private void recordPoiVisit() {
-        android.util.Log.d("POI_SCORE", "Recording visit for POI: " + poiId);
-        
         try {
             // Get user ID from SharedPreferences
             android.content.SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
@@ -578,8 +568,6 @@ if (command.contains("je dépose les armes")) {
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                             String today = dateFormat.format(new Date());
                             
-                            android.util.Log.d("POI_SCORE", "Checking POI " + poiId + " in visitedPois list of size: " + visitedPois.size());
-                            
                             boolean poiFound = false;
                             int existingIndex = -1;
                             
@@ -589,7 +577,6 @@ if (command.contains("je dépose les armes")) {
                                 if (poiId.equals(visit.get("poiId"))) {
                                     existingIndex = i;
                                     poiFound = true;
-                                    android.util.Log.d("POI_SCORE", "Found existing POI at index " + i + " with current date: " + visit.get("visitDate"));
                                     break;
                                 }
                             }
@@ -598,32 +585,17 @@ if (command.contains("je dépose les armes")) {
                                 // Update existing visit date
                                 Map<String, String> existingVisit = visitedPois.get(existingIndex);
                                 existingVisit.put("visitDate", today);
-                                android.util.Log.d("POI_SCORE", "Updated visit date for existing POI: " + poiId + " to " + today);
                             } else {
                                 // Add new visit
                                 Map<String, String> visit = new HashMap<>();
                                 visit.put("poiId", poiId);
                                 visit.put("visitDate", today);
                                 visitedPois.add(visit);
-                                android.util.Log.d("POI_SCORE", "Added new visit for POI: " + poiId + " on " + today);
                             }
-                            
-// Log final state before saving
-                            android.util.Log.d("POI_SCORE", "Final visitedPois list size: " + visitedPois.size());
-                            for (int i = 0; i < visitedPois.size(); i++) {
-                                Map<String, String> visit = visitedPois.get(i);
-                                android.util.Log.d("POI_SCORE", "Entry " + i + ": poiId=" + visit.get("poiId") + ", visitDate=" + visit.get("visitDate"));
-                            }
-                            
-// Update Firebase
+                                                        
+                            // Update Firebase
                             db.collection("users").document(userId)
-                                .update("visitedPois", visitedPois)
-                                .addOnSuccessListener(aVoid -> {
-                                    android.util.Log.d("POI_SCORE", "Successfully updated visitedPois in Firebase for POI: " + poiId);
-                                })
-                                .addOnFailureListener(e -> {
-                                    android.util.Log.e("POI_SCORE", "Error updating visitedPois in Firebase", e);
-                                });
+                                .update("visitedPois", visitedPois);
                         }
                     })
                     .addOnFailureListener(e -> {
@@ -665,15 +637,9 @@ if (command.contains("je dépose les armes")) {
     
     
     
-    private void updateDisplayText(Integer score, Integer team) {
-        android.util.Log.d("POI_SCORE", "=== UPDATE DISPLAY TEXT START ===");
-        android.util.Log.d("POI_SCORE", "Parameters - score: " + score + ", team: " + team);
-        
+    private void updateDisplayText(Integer score, Integer team) {        
         if (getContext() == null || binding == null || binding.textScore == null) {
             android.util.Log.w("POI_SCORE", "Cannot update display - context, binding, or textView is null");
-            android.util.Log.d("POI_SCORE", "Context null: " + (getContext() == null));
-            android.util.Log.d("POI_SCORE", "Binding null: " + (binding == null));
-            android.util.Log.d("POI_SCORE", "TextView null: " + (binding == null || binding.textScore == null));
             return;
         }
         
@@ -706,13 +672,7 @@ if (command.contains("je dépose les armes")) {
         displayText += "\n" + getTeamDisplayText(displayTeam);
         displayText += "\nScore de la zone: " + (score != null ? score : 0);
         
-        android.util.Log.d("POI_SCORE", "Final display text: " + displayText);
-        android.util.Log.d("POI_SCORE", "About to set text on TextView...");
-        
         binding.textScore.setText(displayText);
-        
-        android.util.Log.d("POI_SCORE", "Text set successfully on TextView");
-        android.util.Log.d("POI_SCORE", "=== UPDATE DISPLAY TEXT END ===");
     }
 
     @Override
@@ -737,9 +697,7 @@ if (command.contains("je dépose les armes")) {
         return super.onOptionsItemSelected(item);
     }
     
-    private void initializeTeamNamesCache() {
-        android.util.Log.d("TEAM_DEBUG", "Initializing team names cache from Firebase");
-        
+    private void initializeTeamNamesCache() {        
         // Initialize with default values
         teamNamesCache.put(0, "Neutre");
         teamNamesCache.put(1, "Les Conquérants");
@@ -753,7 +711,6 @@ if (command.contains("je dépose les armes")) {
             db.collection("teams")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    android.util.Log.d("TEAM_DEBUG", "Successfully loaded teams from Firebase");
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         String teamId = document.getId();
                         String teamName = document.getString("name");
@@ -764,7 +721,6 @@ if (command.contains("je dépose les armes")) {
                                 int teamNumber = Integer.parseInt(teamId.substring(5));
                                 if (teamName != null) {
                                     teamNamesCache.put(teamNumber, teamName);
-                                    android.util.Log.d("TEAM_DEBUG", "Updated team name: " + teamNumber + " -> " + teamName);
                                     
                                     // Refresh display if already showing
                                     updateDisplayText(null, null);
