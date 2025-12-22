@@ -1,8 +1,10 @@
 package com.example.vibing;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import com.example.vibing.ui.onboarding.TeamSelectionActivity;
 
@@ -20,13 +22,13 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
 
-    @Override
+@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Check if it's first launch
-        SharedPreferences prefs = getSharedPreferences("VibingPrefs", MODE_PRIVATE);
-        boolean isFirstLaunch = prefs.getBoolean("is_first_launch", true);
+        // Check if it's first launch using internal file
+        File firstLaunchFile = new File(getFilesDir(), "first_launch.txt");
+        boolean isFirstLaunch = !firstLaunchFile.exists();
         
         if (isFirstLaunch) {
             Intent intent = new Intent(MainActivity.this, TeamSelectionActivity.class);

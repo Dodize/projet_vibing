@@ -47,7 +47,7 @@ const parisPoisData = {
     "name": "Musée d'Orsay",
     "location": { "latitude": 48.8600, "longitude": 2.3266 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_centre_pompidou": {
@@ -148,7 +148,7 @@ const parisPoisData = {
     "name": "Opéra Garnier",
     "location": { "latitude": 48.8719, "longitude": 2.3316 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_champs_elysees": {

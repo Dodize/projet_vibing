@@ -40,7 +40,7 @@ const nicePoisData = {
     "name": "Musée Matisse",
     "location": { "latitude": 43.7194, "longitude": 7.2778 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_musee_chagall": {
@@ -109,7 +109,7 @@ const nicePoisData = {
     "name": "Cathédrale Orthodoxe Russe",
     "location": { "latitude": 43.6958, "longitude": 7.2710 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_basilique_notre_dame": {
@@ -155,7 +155,7 @@ const nicePoisData = {
     "name": "Allianz Riviera",
     "location": { "latitude": 43.6944, "longitude": 7.2194 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_patinoire_jean_bouin": {

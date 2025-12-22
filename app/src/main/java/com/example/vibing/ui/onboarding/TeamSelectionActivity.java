@@ -8,6 +8,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -215,8 +218,22 @@ private void saveUserPreferences(User user) {
         editor.putString("team_id", user.getTeamId());
         editor.putString("team_name", user.getTeamName());
         editor.putInt("money", user.getMoney());
-        editor.putBoolean("is_first_launch", false);
         editor.apply();
+        
+        // Create first launch file to indicate user has been created
+        createFirstLaunchFile();
+    }
+    
+    private void createFirstLaunchFile() {
+        try {
+            File firstLaunchFile = new File(getFilesDir(), "first_launch.txt");
+            FileOutputStream fos = new FileOutputStream(firstLaunchFile);
+            fos.write("first_launch_completed".getBytes());
+            fos.close();
+        } catch (IOException e) {
+            // Log error but don't fail the user creation process
+            android.util.Log.e("TeamSelectionActivity", "Error creating first launch file", e);
+        }
     }
 
     private boolean canJoinTeam(Team team) {

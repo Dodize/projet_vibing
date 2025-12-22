@@ -31,6 +31,8 @@ import com.example.vibing.models.Poi;
 
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -52,6 +54,11 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 
 public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
@@ -69,6 +76,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private TextView currentInfoBubble;
     private Marker currentSelectedMarker;
     private HomeViewModel homeViewModel;
+    private List<Map<String, String>> visitedPois;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -87,16 +95,18 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     // --- POI Model ---
     private static class PoiItem {
         String name;
+        String id; // Firebase document ID
         double distance;
         double latitude;
         double longitude;
         int score;
-        int owningTeam; // 0 = neutral, 1-5 = teams
+         int owningTeam; // 0 = neutral, 1-4 = teams
         double radius; // Rayon de la zone cliquable en mètres
         Marker marker;
 
-        PoiItem(String name, double latitude, double longitude, int score, int owningTeam) {
+        PoiItem(String name, String id, double latitude, double longitude, int score, int owningTeam) {
             this.name = name;
+            this.id = id;
             this.latitude = latitude;
             this.longitude = longitude;
             this.score = score;
@@ -107,6 +117,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         PoiItem(String name, double latitude, double longitude, int score, int owningTeam, double radius) {
             this.name = name;
+            this.id = null; // No ID available in this constructor
             this.latitude = latitude;
             this.longitude = longitude;
             this.score = score;
@@ -137,15 +148,31 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         public void onBindViewHolder(@NonNull PoiViewHolder holder, int position) {
             PoiItem poi = poiList.get(position);
             
-
-            
             holder.poiNameTextView.setText(poi.name);
             // Format distance for display
             String distanceText = String.format("%.2f km", poi.distance);
             holder.poiDistanceTextView.setText(distanceText);
             
+            // Check if POI was visited today and update appearance
+            boolean isVisitedToday = isPoiVisitedToday(poi.id);
+            
+            if (isVisitedToday) {
+                holder.poiNameTextView.setTextColor(0xFF808080); // Gray text
+                holder.poiDistanceTextView.setTextColor(0xFF808080); // Gray text
+                holder.itemView.setAlpha(0.6f); // Semi-transparent
+            } else {
+                holder.poiNameTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
+                holder.poiDistanceTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
+                holder.itemView.setAlpha(1.0f); // Fully opaque
+            }
+            
             // Set click listener
             holder.itemView.setOnClickListener(v -> {
+                if (isVisitedToday) {
+                    Toast.makeText(v.getContext(), "Vous avez déjà visité " + poi.name + " aujourd'hui. Revenez demain !", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                
                 if (isUserInPoiZone(poi)) {
                     navigateToPoiScore(poi);
                 } else {
@@ -187,7 +214,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Convert Firebase POIs to local PoiItems
                 for (Poi poi : pois) {
-                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam(), poi.getRadius());
+                    PoiItem poiItem = new PoiItem(poi.getName(), poi.getId(), poi.getLatitude(), poi.getLongitude(), poi.getScore(), poi.getOwningTeam());
                     poiList.add(poiItem);
                 }
                 
@@ -206,11 +233,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
                     poiMarker.setPosition(poiLocation);
                     poiMarker.setTitle(poi.name);
+                    android.util.Log.d("POI_DEBUG", "POI: " + poi.name + " | owningTeam: " + poi.owningTeam + " | TeamName: " + getTeamName(poi.owningTeam));
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
-                    // Check if user is in zone to set appropriate icon
+                    // Check if user is in zone and if POI was visited today
                     boolean isInZone = isUserInPoiZone(poi);
-                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone));
+                    boolean isVisitedToday = isPoiVisitedToday(poi.id);
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
                     
                     poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
                     poiMarker.setOnMarkerClickListener(this);
@@ -240,14 +269,16 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private String getTeamName(int teamId) {
+        android.util.Log.d("TEAM_DEBUG", "getTeamName called with teamId: " + teamId);
         switch (teamId) {
             case 0: return "Neutre";
-            case 1: return "Équipe Rouge";
-            case 2: return "Équipe Bleue";
-            case 3: return "Équipe Verte";
-            case 4: return "Équipe Jaune";
-            case 5: return "Équipe Violette";
-            default: return "Inconnue";
+            case 1: return "Les Conquérants";
+            case 2: return "Les Explorateurs";
+            case 3: return "Les Stratèges";
+            case 4: return "Les Gardiens";
+            default: 
+                android.util.Log.d("TEAM_DEBUG", "Unknown teamId: " + teamId + ", returning 'Neutre'");
+                return "Neutre";
         }
     }
     
@@ -258,27 +289,45 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             case 2: return 0xFF0000FF; // Blue
             case 3: return 0xFF00FF00; // Green
             case 4: return 0xFFFFFF00; // Yellow
-            case 5: return 0xFF800080; // Purple
+
             default: return 0xFF808080; // Gray
         }
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId) {
-        return getTeamIcon(teamId, false);
+        return getTeamIcon(teamId, false, false);
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId, boolean isInZone) {
+        return getTeamIcon(teamId, isInZone, false);
+    }
+    
+    private android.graphics.drawable.Drawable getTeamIcon(int teamId, boolean isInZone, boolean isVisitedToday) {
         // Create a larger colored circle drawable for team markers
         android.graphics.drawable.ShapeDrawable shape = new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape());
         
-        // Use brighter color if in zone, normal color if not
-        int color = isInZone ? getBrightTeamColor(teamId) : getTeamColor(teamId);
+        int color;
+        int strokeWidth;
+        int size;
+        
+        if (isVisitedToday) {
+            // Gray out visited POIs
+            color = 0xFF808080; // Gray
+            strokeWidth = 2;
+            size = 35; // Smaller for visited POIs
+        } else {
+            // Use brighter color if in zone, normal color if not
+            color = isInZone ? getBrightTeamColor(teamId) : getTeamColor(teamId);
+            strokeWidth = isInZone ? 4 : 2; // Thicker border if in zone
+            size = isInZone ? 45 : 40; // Slightly larger if in zone
+        }
+        
         shape.getPaint().setColor(color);
-        shape.getPaint().setStrokeWidth(isInZone ? 4 : 2); // Thicker border if in zone
+        shape.getPaint().setStrokeWidth(strokeWidth);
         shape.getPaint().setStyle(android.graphics.Paint.Style.FILL_AND_STROKE);
         shape.getPaint().setAntiAlias(true);
-        shape.setIntrinsicWidth(isInZone ? 45 : 40); // Slightly larger if in zone
-        shape.setIntrinsicHeight(isInZone ? 45 : 40);
+        shape.setIntrinsicWidth(size);
+        shape.setIntrinsicHeight(size);
         return shape;
     }
     
@@ -335,10 +384,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
             
-            // Update marker icon based on zone status
+            // Update marker icon based on zone status and visit status
             if (poi.marker != null) {
                 boolean isInZone = isUserInPoiZone(poi);
-                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone));
+                boolean isVisitedToday = isPoiVisitedToday(poi.id);
+                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
             }
         }
         
@@ -466,10 +516,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         poiListAdapter = new PoiListAdapter(new ArrayList<>());
         poiRecyclerView.setAdapter(poiListAdapter);
         
-        // 3. Initialize POIs from Firebase
+        // 3. Load user's visited POIs
+        loadUserVisitedPois();
+        
+        // 4. Initialize POIs from Firebase
         initializePOIsFromFirebase();
         
-        // 4. Check Permissions and Start Location Logic
+        // 5. Check Permissions and Start Location Logic
         checkLocationPermissions();
         
         // Center map on user location if available, otherwise Toulouse as fallback
@@ -623,6 +676,12 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Find the POI associated with this marker
         for (PoiItem poi : poiList) {
             if (poi.marker == marker) {
+                // Vérifier si le POI a déjà été visité aujourd'hui
+                if (isPoiVisitedToday(poi.id)) {
+                    Toast.makeText(getContext(), "Vous avez déjà visité " + poi.name + " aujourd'hui. Revenez demain !", Toast.LENGTH_LONG).show();
+                    return true;
+                }
+                
                 // Vérifier si le joueur est dans la zone du POI
                 if (isUserInPoiZone(poi)) {
                     // Naviguer vers PoiScoreFragment comme dans la liste
@@ -792,10 +851,16 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Create bundle with POI data
         Bundle bundle = new Bundle();
         bundle.putString("poiName", poi.name);
+        bundle.putString("poiId", poi.id); // Pass the actual POI ID from Firebase
         bundle.putFloat("poiLatitude", (float) poi.latitude);
         bundle.putFloat("poiLongitude", (float) poi.longitude);
         bundle.putInt("poiScore", poi.score);
         bundle.putInt("poiOwningTeam", poi.owningTeam);
+        
+// Get current user's team ID as string
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        String userTeamId = prefs.getString("team_id", "team_1"); // Default to team_1 if not set
+        bundle.putString("userTeamId", userTeamId);
         
         // Navigate to PoiScoreFragment
         NavController navController = Navigation.findNavController(requireView());
@@ -807,6 +872,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         String username = prefs.getString("username", "Joueur");
         String teamName = prefs.getString("team_name", "Équipe inconnue");
         int money = prefs.getInt("money", 0);
+        
+        // Load current money from Firebase
+        loadUserMoneyFromFirebase();
         
         TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
         TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
@@ -822,6 +890,203 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void loadUserMoneyFromFirebase() {
+        android.util.Log.d("HOME_FRAGMENT", "Loading user money from Firebase");
+        
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            Integer money = documentSnapshot.getLong("money") != null ? 
+                                documentSnapshot.getLong("money").intValue() : 0;
+                            
+                            // Update local SharedPreferences with Firebase value
+                            SharedPreferences.Editor editor = prefs.edit();
+                            editor.putInt("money", money);
+                            editor.apply();
+                            
+                            // Update UI
+                            updateMoneyDisplay(money);
+                            
+                            android.util.Log.d("HOME_FRAGMENT", "Loaded user money from Firebase: " + money);
+                        } else {
+                            android.util.Log.w("HOME_FRAGMENT", "User document not found in Firebase");
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error loading user money from Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, using default money: 0");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception loading user money", e);
+        }
+    }
+    
+    private void updateMoneyDisplay(int money) {
+        TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        if (moneyTextView != null) {
+            moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void saveUserMoneyToFirebase(int money) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .update("money", money)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved money to Firebase: " + money);
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving money to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save money to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving user money", e);
+        }
+    }
+    
+    // Public method to allow other fragments to update money
+    public void updateUserMoney(int money) {
+        // Update local SharedPreferences
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("money", money);
+        editor.apply();
+        
+        // Update Firebase
+        saveUserMoneyToFirebase(money);
+        
+        // Update UI
+        updateMoneyDisplay(money);
+        
+        android.util.Log.d("HOME_FRAGMENT", "User money updated: " + money);
+    }
+    
+    private void loadUserVisitedPois() {
+        android.util.Log.d("HOME_FRAGMENT", "Loading user visited POIs from Firebase");
+        
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, String>> visited = (List<Map<String, String>>) documentSnapshot.get("visitedPois");
+                            visitedPois = visited != null ? visited : new ArrayList<>();
+                            
+                            android.util.Log.d("HOME_FRAGMENT", "Loaded " + visitedPois.size() + " visited POIs");
+                            
+                            // Update POI display after loading visited POIs
+                            updatePoiDistancesAndList();
+                        } else {
+                            visitedPois = new ArrayList<>();
+                            android.util.Log.d("HOME_FRAGMENT", "User document not found, initializing empty visited POIs list");
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        visitedPois = new ArrayList<>();
+                        android.util.Log.e("HOME_FRAGMENT", "Error loading visited POIs from Firebase", e);
+                    });
+            } else {
+                visitedPois = new ArrayList<>();
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, initializing empty visited POIs list");
+            }
+        } catch (Exception e) {
+            visitedPois = new ArrayList<>();
+            android.util.Log.e("HOME_FRAGMENT", "Exception loading visited POIs", e);
+        }
+    }
+    
+    private boolean isPoiVisitedToday(String poiId) {
+        if (visitedPois == null) return false;
+        
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String today = dateFormat.format(new Date());
+        
+        for (Map<String, String> visit : visitedPois) {
+            if (poiId.equals(visit.get("poiId")) && today.equals(visit.get("visitDate"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+private void recordPoiVisit(String poiId) {
+        if (visitedPois == null) {
+            visitedPois = new ArrayList<>();
+        }
+        
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String today = dateFormat.format(new Date());
+        
+        // Check if POI already exists and update visit date, or add new visit
+        boolean poiFound = false;
+        for (Map<String, String> visit : visitedPois) {
+            if (poiId.equals(visit.get("poiId"))) {
+                // Update existing visit date
+                visit.put("visitDate", today);
+                poiFound = true;
+                android.util.Log.d("HOME_FRAGMENT", "Updated visit date for existing POI: " + poiId + " to " + today);
+                break;
+            }
+        }
+        
+        if (!poiFound) {
+            // Add new visit
+            Map<String, String> visit = new HashMap<>();
+            visit.put("poiId", poiId);
+            visit.put("visitDate", today);
+            visitedPois.add(visit);
+            android.util.Log.d("HOME_FRAGMENT", "Added new visit for POI: " + poiId + " on " + today);
+        }
+        
+        // Save to Firebase
+        saveVisitedPoisToFirebase();
+    }
+    
+    private void saveVisitedPoisToFirebase() {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").document(userId)
+                    .update("visitedPois", visitedPois)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved visited POIs to Firebase");
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving visited POIs to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save visited POIs");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving visited POIs", e);
         }
     }
     
