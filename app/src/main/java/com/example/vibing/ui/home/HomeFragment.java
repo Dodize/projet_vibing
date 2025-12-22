@@ -237,10 +237,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     android.util.Log.d("POI_DEBUG", "POI: " + poi.name + " | owningTeam: " + poi.owningTeam + " | TeamName: " + getTeamName(poi.owningTeam));
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
-                    // Check if user is in zone and if POI was visited today
+                    // Check if user is in zone (don't gray out visited POIs on map)
                     boolean isInZone = isUserInPoiZone(poi);
-                    boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
                     
                     poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
                     poiMarker.setOnMarkerClickListener(this);
@@ -385,11 +384,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
             
-            // Update marker icon based on zone status and visit status
+            // Update marker icon based on zone status (don't gray out visited POIs on map)
             if (poi.marker != null) {
                 boolean isInZone = isUserInPoiZone(poi);
-                boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
             }
         }
         
