@@ -8,7 +8,7 @@
     android:paddingEnd="24dp"
     android:layout_marginBottom="16dp">
 
-    <com.google.android.material.button.MaterialButton
+<com.google.android.material.button.MaterialButton
         android:id="@+id/teamButton"
         style="@style/Widget.MaterialComponents.Button"
         android:layout_width="match_parent"
@@ -20,11 +20,15 @@
         android:textAllCaps="false"
         android:letterSpacing="0.02"
         app:iconSize="22dp"
+        app:icon="@android:drawable/ic_menu_save"
+        app:iconGravity="textEnd"
+        app:iconPadding="16dp"
         android:background="@drawable/team_button_selector"
         app:backgroundTint="@null"
         app:cornerRadius="30dp"
         android:elevation="8dp"
-        android:stateListAnimator="@null" />
+        android:stateListAnimator="@animator/button_press_animator"
+        android:visibility="visible" />
 
     <TextView
         android:id="@+id/teamInfoText"

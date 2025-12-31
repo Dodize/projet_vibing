@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import androidx.appcompat.widget.AppCompatButton;
+import com.google.android.material.button.MaterialButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,7 +64,7 @@ public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
     }
 
 class TeamViewHolder extends RecyclerView.ViewHolder {
-        private AppCompatButton teamButton;
+        private com.google.android.material.button.MaterialButton teamButton;
         private TextView teamInfoText;
 
         public TeamViewHolder(@NonNull View itemView) {
@@ -74,6 +75,20 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
 
 public void bind(Team team) {
             teamButton.setText(team.getName());
+            
+            // Vérifier si c'est l'équipe sélectionnée
+            boolean isSelected = (selectedTeam != null && selectedTeam.getId().equals(team.getId()));
+            
+            // Gérer l'état de sélection
+            teamButton.setSelected(isSelected);
+            
+            // Gérer l'icône de coche
+            if (isSelected) {
+                android.graphics.drawable.Drawable checkIcon = teamButton.getContext().getResources().getDrawable(R.drawable.baseline_check_circle_24, null);
+                teamButton.setIcon(checkIcon);
+            } else {
+                teamButton.setIcon(null);
+            }
             
             String teamColor = null;
             try {
@@ -128,15 +143,22 @@ public void bind(Team team) {
             gradientDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
             gradientDrawable.setCornerRadius(24f);
             
-            // Créer un dégradé à partir de la couleur récupérée
-            int baseColor = Color.parseColor(teamColor);
-            int lighterColor = lightenColor(baseColor, 0.3f); // Version plus claire de la couleur
-            
-            gradientDrawable.setColors(new int[]{baseColor, lighterColor});
-            gradientDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
-            gradientDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
-            
-            teamButton.setBackground(gradientDrawable);
+            // Créer le fond personnalisé en fonction de l'état de sélection
+            if (isSelected) {
+                // Pour l'état sélectionné, créer un drawable avec contour lumineux
+                android.graphics.drawable.LayerDrawable selectedDrawable = createSelectedDrawable(Color.parseColor(teamColor));
+                teamButton.setBackground(selectedDrawable);
+            } else {
+                // Pour l'état normal, utiliser le dégradé
+                int baseColor = Color.parseColor(teamColor);
+                int lighterColor = lightenColor(baseColor, 0.3f); // Version plus claire de la couleur
+                
+                gradientDrawable.setColors(new int[]{baseColor, lighterColor});
+                gradientDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
+                gradientDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
+                
+                teamButton.setBackground(gradientDrawable);
+            }
             
             teamButton.setOnClickListener(v -> {
                 if (listener != null && teamButton.isEnabled()) {
@@ -144,6 +166,43 @@ public void bind(Team team) {
                 }
             });
         }
+    }
+    
+    /**
+     * Crée un drawable avec contour lumineux pour l'état sélectionné
+     * @param teamColor Couleur de l'équipe
+     * @return LayerDrawable avec contour lumineux
+     */
+    private android.graphics.drawable.LayerDrawable createSelectedDrawable(int teamColor) {
+        // Contour lumineux extérieur
+        android.graphics.drawable.GradientDrawable borderDrawable = new android.graphics.drawable.GradientDrawable();
+        borderDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        borderDrawable.setCornerRadius(30f);
+        borderDrawable.setStroke(4, Color.WHITE);
+        borderDrawable.setColor(android.graphics.Color.TRANSPARENT);
+        
+        // Fond principal avec couleur de l'équipe
+        android.graphics.drawable.GradientDrawable backgroundDrawable = new android.graphics.drawable.GradientDrawable();
+        backgroundDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        backgroundDrawable.setCornerRadius(28f);
+        
+        // Créer un dégradé avec la couleur de l'équipe
+        int lighterColor = lightenColor(teamColor, 0.2f);
+        backgroundDrawable.setColors(new int[]{teamColor, lighterColor});
+        backgroundDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
+        backgroundDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
+        
+        // Créer le LayerDrawable
+        android.graphics.drawable.Drawable[] layers = new android.graphics.drawable.Drawable[2];
+        layers[0] = borderDrawable;
+        layers[1] = backgroundDrawable;
+        
+        android.graphics.drawable.LayerDrawable layerDrawable = new android.graphics.drawable.LayerDrawable(layers);
+        
+        // Définir les marges pour le fond (pour laisser voir le contour)
+        layerDrawable.setLayerInset(1, 4, 4, 4, 4);
+        
+        return layerDrawable;
     }
     
     /**

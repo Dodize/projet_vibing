@@ -6,17 +6,22 @@
         <shape android:shape="rectangle">
             <corners android:radius="30dp" />
             <stroke
-                android:width="6dp"
-                android:color="#FFD700"/>
+                android:width="4dp"
+                android:color="#CCCCCC" />
             <solid android:color="@android:color/transparent" />
         </shape>
     </item>
     
-    <!-- Fond principal -->
-    <item android:bottom="2dp" android:top="2dp" android:left="2dp" android:right="2dp">
+    <!-- Fond principal avec effet enfoncé -->
+    <item android:bottom="3dp" android:top="3dp" android:left="3dp" android:right="3dp">
         <shape android:shape="rectangle">
             <corners android:radius="28dp" />
-            <solid android:color="#FF4444" />
+            <!-- Fond plus foncé pour effet enfoncé -->
+            <gradient
+                android:startColor="#88000000"
+                android:centerColor="#CC3333"
+                android:endColor="#CC3333"
+                android:angle="270" />
         </shape>
     </item>
     

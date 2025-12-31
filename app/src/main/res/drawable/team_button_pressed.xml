@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    
+    <!-- Coins arrondis -->
+    <corners android:radius="24dp" />
+    
+    <!-- Fond plus foncé pour effet enfoncé -->
+    <solid android:color="#CC3333" />
+    
+    <!-- Ombre intérieure pour effet profondeur -->
+    <gradient
+        android:startColor="#AA000000"
+        android:centerColor="#CC3333"
+        android:endColor="#CC3333"
+        android:angle="270" />
+        
+</shape>
