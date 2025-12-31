@@ -75,7 +75,7 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
 public void bind(Team team) {
             teamButton.setText(team.getName());
             
-            String teamColor = "#2196F3"; // Couleur par défaut
+            String teamColor = "#FF4444"; // Couleur par défaut rouge
             try {
                 if (team.getColor() != null && !team.getColor().isEmpty()) {
                     teamColor = team.getColor();
@@ -83,7 +83,7 @@ public void bind(Team team) {
                     teamColor = team.getColorHex();
                 }
             } catch (Exception e) {
-                teamColor = "#2196F3";
+                teamColor = "#FF4444";
             }
             
             // Mettre à jour le texte d'information
@@ -112,36 +112,48 @@ public void bind(Team team) {
                 teamButton.setAlpha(1.0f);
             }
             
-            if (selectedTeam != null && selectedTeam.getId().equals(team.getId())) {
-                // Sélectionné : fond couleur équipe, texte blanc
-                teamButton.setSelected(true);
-                teamButton.setTextColor(Color.WHITE);
-                
-                // Créer un background avec la couleur de l'équipe
-                android.graphics.drawable.GradientDrawable selectedDrawable = new android.graphics.drawable.GradientDrawable();
-                selectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                selectedDrawable.setCornerRadius(8f);
-                selectedDrawable.setColor(Color.parseColor(teamColor));
-                teamButton.setBackground(selectedDrawable);
-            } else {
-                // Non sélectionné : fond blanc, contour couleur équipe, texte couleur équipe
-                teamButton.setSelected(false);
-                teamButton.setTextColor(Color.parseColor(teamColor));
-                
-                // Créer un background blanc avec contour couleur équipe
-                android.graphics.drawable.GradientDrawable unselectedDrawable = new android.graphics.drawable.GradientDrawable();
-                unselectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                unselectedDrawable.setCornerRadius(8f);
-                unselectedDrawable.setColor(Color.WHITE);
-                unselectedDrawable.setStroke(4, Color.parseColor(teamColor));
-                teamButton.setBackground(unselectedDrawable);
-            }
+            // Appliquer la couleur dynamique avec dégradé
+            teamButton.setTextColor(Color.WHITE);
+            
+            // Créer un dégradé à partir de la couleur de l'équipe
+            android.graphics.drawable.GradientDrawable gradientDrawable = new android.graphics.drawable.GradientDrawable();
+            gradientDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            gradientDrawable.setCornerRadius(24f);
+            
+            // Créer un dégradé à partir de la couleur récupérée
+            int baseColor = Color.parseColor(teamColor);
+            int lighterColor = lightenColor(baseColor, 0.3f); // Version plus claire de la couleur
+            
+            gradientDrawable.setColors(new int[]{baseColor, lighterColor});
+            gradientDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
+            gradientDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
+            
+            teamButton.setBackground(gradientDrawable);
             
             teamButton.setOnClickListener(v -> {
                 if (listener != null && teamButton.isEnabled()) {
                     listener.onTeamClick(team);
                 }
             });
+            }
         }
+    }
+    
+    /**
+     * Éclaircit une couleur en augmentant ses composantes RGB
+     * @param color Couleur d'origine
+     * @param factor Facteur d'éclaircissement (0.0 = aucune modification, 1.0 = blanc)
+     * @return Couleur éclaircie
+     */
+    private int lightenColor(int color, float factor) {
+        int red = Color.red(color);
+        int green = Color.green(color);
+        int blue = Color.blue(color);
+        
+        red = (int) Math.min(255, red + (255 - red) * factor);
+        green = (int) Math.min(255, green + (255 - green) * factor);
+        blue = (int) Math.min(255, blue + (255 - blue) * factor);
+        
+        return Color.rgb(red, green, blue);
     }
 }

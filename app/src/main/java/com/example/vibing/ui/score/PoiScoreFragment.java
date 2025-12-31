@@ -637,30 +637,26 @@ if (command.contains("je dépose les armes")) {
     }
 
     private String getTeamDisplayText(String teamId) {
+        android.util.Log.d("TEAM_COLOR_DEBUG", "getTeamDisplayText() called with teamId: " + teamId);
         try {
             if (teamId == null || teamId.isEmpty()) {
+                android.util.Log.d("TEAM_COLOR_DEBUG", "TeamId is null or empty, returning Zone neutre");
                 return "Zone neutre";
             }
             
             // Get team name from cache or load from Firebase
             String teamName = getTeamNameFromCache(teamId);
-            String emoji = getTeamEmoji(teamId);
-            return "Équipe: " + teamName + " " + emoji;
+            String result = "Équipe: " + teamName;
+            android.util.Log.d("TEAM_COLOR_DEBUG", "getTeamDisplayText result: " + result);
+            return result;
         } catch (Exception e) {
             android.util.Log.e("POI_SCORE", "Error in getTeamDisplayText: " + e.getMessage());
             return "Zone neutre";
         }
     }
     
-    private String getTeamEmoji(String teamId) {
-        switch (teamId) {
-            case "team_1": return "🔴"; // Les Conquérants (Rouge)
-            case "team_2": return "🔵"; // Les Explorateurs (Bleu)
-            case "team_3": return "🟢"; // Les Stratèges (Vert)
-            case "team_4": return "🟡"; // Les Gardiens (Jaune)
-            default: return "⚪"; // Neutre
-        }
-    }
+
+
     
     
     
@@ -702,6 +698,7 @@ if (command.contains("je dépose les armes")) {
         String displayText = poiName != null ? poiName : "Zone inconnue";
         // Use the string team for display
         String displayTeam = (team != null && team > 0) ? ("team_" + team) : (poiOwningTeam != null ? poiOwningTeam : null);
+        android.util.Log.d("TEAM_COLOR_DEBUG", "About to call getTeamDisplayText with team: " + displayTeam);
         displayText += "\n" + getTeamDisplayText(displayTeam);
         displayText += "\nScore de la zone: " + (score != null ? score : 0);
         
@@ -739,6 +736,8 @@ if (command.contains("je dépose les armes")) {
     private void initializeTeamNamesCache() {
         android.util.Log.d("TEAM_DEBUG", "Initializing team names cache from Firebase");
         
+        android.util.Log.d("TEAM_DEBUG", "About to initialize Firebase query for teams collection");
+        
         // Initialize with default values
         teamNamesCache.put(0, "Neutre");
         teamNamesCache.put(1, "Les Conquérants");
@@ -746,16 +745,29 @@ if (command.contains("je dépose les armes")) {
         teamNamesCache.put(3, "Les Stratèges");
         teamNamesCache.put(4, "Les Gardiens");
         
-        // Load real team names from Firebase and update cache
+
+        
+        // Load real team names and colors from Firebase and update cache
         try {
             FirebaseFirestore db = FirebaseFirestore.getInstance();
+            android.util.Log.d("TEAM_DEBUG", "Creating Firebase query for 'teams' collection");
+            
             db.collection("teams")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    android.util.Log.d("TEAM_DEBUG", "Successfully loaded teams from Firebase");
+                    android.util.Log.d("TEAM_DEBUG", "Firebase query SUCCESS - loaded " + queryDocumentSnapshots.size() + " teams from Firebase");
+                    android.util.Log.d("TEAM_DEBUG", "Team documents: " + queryDocumentSnapshots.getDocuments());
+                    
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         String teamId = document.getId();
+                        android.util.Log.d("TEAM_DEBUG", "Processing team document: " + teamId);
+                        android.util.Log.d("TEAM_DEBUG", "Team document data: " + document.getData());
+                        
                         String teamName = document.getString("name");
+                        String teamColor = document.getString("color");
+                        String teamColorHex = document.getString("colorHex");
+                        
+                        android.util.Log.d("TEAM_DEBUG", "Extracted fields - name: " + teamName + ", color: " + teamColor + ", colorHex: " + teamColorHex);
                         
                         // Extract team number from "team_X" format
                         if (teamId.startsWith("team_")) {
@@ -764,21 +776,30 @@ if (command.contains("je dépose les armes")) {
                                 if (teamName != null) {
                                     teamNamesCache.put(teamNumber, teamName);
                                     android.util.Log.d("TEAM_DEBUG", "Updated team name: " + teamNumber + " -> " + teamName);
-                                    
-                                    // Refresh display if already showing
-                                    updateDisplayText(null, null);
                                 }
+
                             } catch (NumberFormatException e) {
                                 android.util.Log.e("TEAM_DEBUG", "Error parsing team ID: " + teamId, e);
                             }
+                        } else {
+                            android.util.Log.w("TEAM_DEBUG", "Team ID doesn't start with 'team_': " + teamId);
                         }
+                    }
+                    
+                    android.util.Log.d("TEAM_DEBUG", "Team names cache: " + teamNamesCache.toString());
+                    
+                    // Force refresh display if already showing
+                    if (getContext() != null) {
+                        android.util.Log.d("TEAM_DEBUG", "About to call updateDisplayText from Firebase success");
+                        updateDisplayText(null, null);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    android.util.Log.e("TEAM_DEBUG", "Error loading teams from Firebase", e);
+                    android.util.Log.e("TEAM_DEBUG", "ERROR loading teams from Firebase: " + e.getMessage());
+                    android.util.Log.e("TEAM_DEBUG", "Firebase query failed");
                 });
         } catch (Exception e) {
-            android.util.Log.e("TEAM_DEBUG", "Exception initializing team names cache", e);
+
         }
     }
     
@@ -798,7 +819,7 @@ private String getTeamNameFromCache(String teamId) {
             return teamName;
         }
         
-// If not in cache, return default based on teamId
+        // If not in cache, return default based on teamId
         switch (teamId) {
             case "team_1": return "Les Conquérants";
             case "team_2": return "Les Explorateurs";
