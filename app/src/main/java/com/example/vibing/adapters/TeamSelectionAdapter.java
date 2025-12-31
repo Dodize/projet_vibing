@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import androidx.appcompat.widget.AppCompatButton;
+import com.google.android.material.button.MaterialButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,7 +64,7 @@ public TeamSelectionAdapter(List<Team> teamList, OnTeamClickListener listener) {
     }
 
 class TeamViewHolder extends RecyclerView.ViewHolder {
-        private AppCompatButton teamButton;
+        private com.google.android.material.button.MaterialButton teamButton;
         private TextView teamInfoText;
 
         public TeamViewHolder(@NonNull View itemView) {
@@ -75,15 +76,37 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
 public void bind(Team team) {
             teamButton.setText(team.getName());
             
-            String teamColor = "#2196F3"; // Couleur par défaut
+            // Vérifier si c'est l'équipe sélectionnée
+            boolean isSelected = (selectedTeam != null && selectedTeam.getId().equals(team.getId()));
+            
+            // Gérer l'état de sélection
+            teamButton.setSelected(isSelected);
+            
+            // Gérer l'icône de coche
+            if (isSelected) {
+                android.graphics.drawable.Drawable checkIcon = teamButton.getContext().getResources().getDrawable(R.drawable.baseline_check_circle_24, null);
+                teamButton.setIcon(checkIcon);
+            } else {
+                teamButton.setIcon(null);
+            }
+            
+            String teamColor = null;
             try {
-                if (team.getColor() != null && !team.getColor().isEmpty()) {
-                    teamColor = team.getColor();
-                } else if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
+                // Priorité à colorHex qui est le champ utilisé dans Firebase
+                if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
                     teamColor = team.getColorHex();
+                } else if (team.getColor() != null && !team.getColor().isEmpty()) {
+                    teamColor = team.getColor();
                 }
             } catch (Exception e) {
-                teamColor = "#2196F3";
+                teamColor = null;
+            }
+            
+            // Si aucune couleur n'est trouvée, utiliser une couleur par défaut différente pour chaque équipe
+            if (teamColor == null) {
+                String[] defaultColors = {"#FF0000", "#0000FF", "#00FF00", "#FFA500", "#800080"};
+                int position = teamList.indexOf(team);
+                teamColor = defaultColors[position % defaultColors.length];
             }
             
             // Mettre à jour le texte d'information
@@ -112,29 +135,29 @@ public void bind(Team team) {
                 teamButton.setAlpha(1.0f);
             }
             
-            if (selectedTeam != null && selectedTeam.getId().equals(team.getId())) {
-                // Sélectionné : fond couleur équipe, texte blanc
-                teamButton.setSelected(true);
-                teamButton.setTextColor(Color.WHITE);
-                
-                // Créer un background avec la couleur de l'équipe
-                android.graphics.drawable.GradientDrawable selectedDrawable = new android.graphics.drawable.GradientDrawable();
-                selectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                selectedDrawable.setCornerRadius(8f);
-                selectedDrawable.setColor(Color.parseColor(teamColor));
+            // Appliquer la couleur dynamique avec dégradé
+            teamButton.setTextColor(Color.WHITE);
+            
+            // Créer un dégradé à partir de la couleur de l'équipe
+            android.graphics.drawable.GradientDrawable gradientDrawable = new android.graphics.drawable.GradientDrawable();
+            gradientDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            gradientDrawable.setCornerRadius(24f);
+            
+            // Créer le fond personnalisé en fonction de l'état de sélection
+            if (isSelected) {
+                // Pour l'état sélectionné, créer un drawable avec contour lumineux
+                android.graphics.drawable.LayerDrawable selectedDrawable = createSelectedDrawable(Color.parseColor(teamColor));
                 teamButton.setBackground(selectedDrawable);
             } else {
-                // Non sélectionné : fond blanc, contour couleur équipe, texte couleur équipe
-                teamButton.setSelected(false);
-                teamButton.setTextColor(Color.parseColor(teamColor));
+                // Pour l'état normal, utiliser le dégradé
+                int baseColor = Color.parseColor(teamColor);
+                int lighterColor = lightenColor(baseColor, 0.3f); // Version plus claire de la couleur
                 
-                // Créer un background blanc avec contour couleur équipe
-                android.graphics.drawable.GradientDrawable unselectedDrawable = new android.graphics.drawable.GradientDrawable();
-                unselectedDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                unselectedDrawable.setCornerRadius(8f);
-                unselectedDrawable.setColor(Color.WHITE);
-                unselectedDrawable.setStroke(4, Color.parseColor(teamColor));
-                teamButton.setBackground(unselectedDrawable);
+                gradientDrawable.setColors(new int[]{baseColor, lighterColor});
+                gradientDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
+                gradientDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
+                
+                teamButton.setBackground(gradientDrawable);
             }
             
             teamButton.setOnClickListener(v -> {
@@ -143,5 +166,60 @@ public void bind(Team team) {
                 }
             });
         }
+    }
+    
+    /**
+     * Crée un drawable avec contour lumineux pour l'état sélectionné
+     * @param teamColor Couleur de l'équipe
+     * @return LayerDrawable avec contour lumineux
+     */
+    private android.graphics.drawable.LayerDrawable createSelectedDrawable(int teamColor) {
+        // Contour lumineux extérieur
+        android.graphics.drawable.GradientDrawable borderDrawable = new android.graphics.drawable.GradientDrawable();
+        borderDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        borderDrawable.setCornerRadius(30f);
+        borderDrawable.setStroke(4, Color.WHITE);
+        borderDrawable.setColor(android.graphics.Color.TRANSPARENT);
+        
+        // Fond principal avec couleur de l'équipe
+        android.graphics.drawable.GradientDrawable backgroundDrawable = new android.graphics.drawable.GradientDrawable();
+        backgroundDrawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        backgroundDrawable.setCornerRadius(28f);
+        
+        // Créer un dégradé avec la couleur de l'équipe
+        int lighterColor = lightenColor(teamColor, 0.2f);
+        backgroundDrawable.setColors(new int[]{teamColor, lighterColor});
+        backgroundDrawable.setGradientType(android.graphics.drawable.GradientDrawable.LINEAR_GRADIENT);
+        backgroundDrawable.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT);
+        
+        // Créer le LayerDrawable
+        android.graphics.drawable.Drawable[] layers = new android.graphics.drawable.Drawable[2];
+        layers[0] = borderDrawable;
+        layers[1] = backgroundDrawable;
+        
+        android.graphics.drawable.LayerDrawable layerDrawable = new android.graphics.drawable.LayerDrawable(layers);
+        
+        // Définir les marges pour le fond (pour laisser voir le contour)
+        layerDrawable.setLayerInset(1, 4, 4, 4, 4);
+        
+        return layerDrawable;
+    }
+    
+    /**
+     * Éclaircit une couleur en augmentant ses composantes RGB
+     * @param color Couleur d'origine
+     * @param factor Facteur d'éclaircissement (0.0 = aucune modification, 1.0 = blanc)
+     * @return Couleur éclaircie
+     */
+    private int lightenColor(int color, float factor) {
+        int red = Color.red(color);
+        int green = Color.green(color);
+        int blue = Color.blue(color);
+        
+        red = (int) Math.min(255, red + (255 - red) * factor);
+        green = (int) Math.min(255, green + (255 - green) * factor);
+        blue = (int) Math.min(255, blue + (255 - blue) * factor);
+        
+        return Color.rgb(red, green, blue);
     }
 }

@@ -33,6 +33,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -77,6 +78,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private Marker currentSelectedMarker;
     private HomeViewModel homeViewModel;
     private List<Map<String, String>> visitedPois;
+    
+    // Cache for team colors loaded from Firebase
+    private Map<Integer, Integer> teamColorsCache = new HashMap<>();
+    private Map<Integer, Integer> teamBrightColorsCache = new HashMap<>();
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -161,8 +166,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 holder.poiDistanceTextView.setTextColor(0xFF808080); // Gray text
                 holder.itemView.setAlpha(0.6f); // Semi-transparent
             } else {
-                holder.poiNameTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
-                holder.poiDistanceTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
+                // Use proper theme colors for better visibility
+                holder.poiNameTextView.setTextColor(getResources().getColor(R.color.text_dark, null));
+                holder.poiDistanceTextView.setTextColor(getResources().getColor(R.color.text_secondary, null));
                 holder.itemView.setAlpha(1.0f); // Fully opaque
             }
             
@@ -235,10 +241,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     poiMarker.setTitle(poi.name);
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
-                    // Check if user is in zone and if POI was visited today
+                    // Check if user is in zone (don't gray out visited POIs on map)
                     boolean isInZone = isUserInPoiZone(poi);
-                    boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
                     
                     poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
                     poiMarker.setOnMarkerClickListener(this);
@@ -279,16 +284,87 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
     }
     
-    private int getTeamColor(int teamId) {
-        switch (teamId) {
-            case 0: return 0xFF808080; // Gray for neutral
-            case 1: return 0xFFFF0000; // Red
-            case 2: return 0xFF0000FF; // Blue
-            case 3: return 0xFF00FF00; // Green
-            case 4: return 0xFFFFFF00; // Yellow
-
-            default: return 0xFF808080; // Gray
+    private void initializeTeamColorsCache() {
+        // Initialize with default values
+        teamColorsCache.put(0, 0xFF808080); // Gray for neutral
+        teamColorsCache.put(1, 0xFFFF0000); // Red
+        teamColorsCache.put(2, 0xFF0000FF); // Blue
+        teamColorsCache.put(3, 0xFF00FF00); // Green
+        teamColorsCache.put(4, 0xFFFFFF00); // Yellow
+        teamColorsCache.put(5, 0xFF800080); // Purple
+        
+        teamBrightColorsCache.put(0, 0xFFB0B0B0); // Brighter gray for neutral
+        teamBrightColorsCache.put(1, 0xFFFF4444); // Brighter red
+        teamBrightColorsCache.put(2, 0xFF4444FF); // Brighter blue
+        teamBrightColorsCache.put(3, 0xFF44FF44); // Brighter green
+        teamBrightColorsCache.put(4, 0xFFFFFF44); // Brighter yellow
+        teamBrightColorsCache.put(5, 0xFFAA44AA); // Brighter purple
+        
+        // Load real team colors from Firebase and update cache
+        try {
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            db.collection("teams")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    android.util.Log.d("TEAM_COLOR_DEBUG", "Successfully loaded team colors from Firebase");
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        String teamId = document.getId();
+                        String teamColorHex = document.getString("color");
+                        String teamColorHexField = document.getString("colorHex");
+                        
+                        // Extract team number from "team_X" format
+                        if (teamId.startsWith("team_")) {
+                            try {
+                                int teamNumber = Integer.parseInt(teamId.substring(5));
+                                
+                                // Use color if available, otherwise try colorHex
+                                String colorToUse = teamColorHex;
+                                if (colorToUse == null || colorToUse.isEmpty()) {
+                                    colorToUse = teamColorHexField;
+                                }
+                                
+                                if (colorToUse != null && !colorToUse.isEmpty()) {
+                                    int colorInt = android.graphics.Color.parseColor(colorToUse);
+                                    teamColorsCache.put(teamNumber, colorInt);
+                                    
+                                    // Generate bright version
+                                    int brightColorInt = makeColorBrighter(colorToUse);
+                                    teamBrightColorsCache.put(teamNumber, brightColorInt);
+                                    
+                                    android.util.Log.d("TEAM_COLOR_DEBUG", "Updated team color: " + teamNumber + " -> " + colorToUse);
+                                }
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("TEAM_COLOR_DEBUG", "Error parsing team ID: " + teamId, e);
+                            } catch (IllegalArgumentException e) {
+                                android.util.Log.e("TEAM_COLOR_DEBUG", "Error parsing color for team " + teamId, e);
+                            }
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("TEAM_COLOR_DEBUG", "Error loading team colors from Firebase", e);
+                });
+        } catch (Exception e) {
+            android.util.Log.e("TEAM_COLOR_DEBUG", "Exception initializing team colors cache", e);
         }
+    }
+    
+    private int makeColorBrighter(String colorHex) {
+        try {
+            int color = android.graphics.Color.parseColor(colorHex);
+            float[] hsv = new float[3];
+            android.graphics.Color.colorToHSV(color, hsv);
+            hsv[2] = Math.min(hsv[2] * 1.4f, 1.0f); // Increase brightness by 40%
+            return android.graphics.Color.HSVToColor(hsv);
+        } catch (Exception e) {
+            android.util.Log.e("TEAM_COLOR_DEBUG", "Error making color brighter: " + colorHex, e);
+            return 0xFFB0B0B0; // Default bright gray
+        }
+    }
+    
+    private int getTeamColor(int teamId) {
+        // Return color from cache, fallback to default gray if not found
+        return teamColorsCache.getOrDefault(teamId, 0xFF808080); // Gray fallback
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId) {
@@ -329,15 +405,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private int getBrightTeamColor(int teamId) {
-        switch (teamId) {
-            case 0: return 0xFFB0B0B0; // Brighter gray for neutral
-            case 1: return 0xFFFF4444; // Brighter red
-            case 2: return 0xFF4444FF; // Brighter blue
-            case 3: return 0xFF44FF44; // Brighter green
-            case 4: return 0xFFFFFF44; // Brighter yellow
-            case 5: return 0xFFAA44AA; // Brighter purple
-            default: return 0xFFB0B0B0; // Brighter gray
-        }
+        // Return bright color from cache, fallback to default bright gray if not found
+        return teamBrightColorsCache.getOrDefault(teamId, 0xFFB0B0B0); // Bright gray fallback
     }
     
     private void updatePoiDistancesAndList() {
@@ -381,11 +450,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
             
-            // Update marker icon based on zone status and visit status
+            // Update marker icon based on zone status (don't gray out visited POIs on map)
             if (poi.marker != null) {
                 boolean isInZone = isUserInPoiZone(poi);
-                boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
             }
         }
         
@@ -410,6 +478,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
         // Display user information from SharedPreferences
         displayUserInfo();
+        
+        // Initialize team colors cache with default values and load from Firebase
+        initializeTeamColorsCache();
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
