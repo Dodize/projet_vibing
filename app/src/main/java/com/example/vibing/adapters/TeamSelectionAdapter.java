@@ -75,15 +75,23 @@ class TeamViewHolder extends RecyclerView.ViewHolder {
 public void bind(Team team) {
             teamButton.setText(team.getName());
             
-            String teamColor = "#FF4444"; // Couleur par défaut rouge
+            String teamColor = null;
             try {
-                if (team.getColor() != null && !team.getColor().isEmpty()) {
-                    teamColor = team.getColor();
-                } else if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
+                // Priorité à colorHex qui est le champ utilisé dans Firebase
+                if (team.getColorHex() != null && !team.getColorHex().isEmpty()) {
                     teamColor = team.getColorHex();
+                } else if (team.getColor() != null && !team.getColor().isEmpty()) {
+                    teamColor = team.getColor();
                 }
             } catch (Exception e) {
-                teamColor = "#FF4444";
+                teamColor = null;
+            }
+            
+            // Si aucune couleur n'est trouvée, utiliser une couleur par défaut différente pour chaque équipe
+            if (teamColor == null) {
+                String[] defaultColors = {"#FF0000", "#0000FF", "#00FF00", "#FFA500", "#800080"};
+                int position = teamList.indexOf(team);
+                teamColor = defaultColors[position % defaultColors.length];
             }
             
             // Mettre à jour le texte d'information
@@ -135,7 +143,6 @@ public void bind(Team team) {
                     listener.onTeamClick(team);
                 }
             });
-            }
         }
     }
     
