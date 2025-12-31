@@ -239,7 +239,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     GeoPoint poiLocation = new GeoPoint(poi.latitude, poi.longitude);
                     poiMarker.setPosition(poiLocation);
                     poiMarker.setTitle(poi.name);
-                    android.util.Log.d("POI_DEBUG", "POI: " + poi.name + " | owningTeam: " + poi.owningTeam + " | TeamName: " + getTeamName(poi.owningTeam));
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
                     // Check if user is in zone (don't gray out visited POIs on map)
@@ -274,15 +273,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private String getTeamName(int teamId) {
-        android.util.Log.d("TEAM_DEBUG", "getTeamName called with teamId: " + teamId);
         switch (teamId) {
             case 0: return "Neutre";
             case 1: return "Les Conquérants";
             case 2: return "Les Explorateurs";
             case 3: return "Les Stratèges";
             case 4: return "Les Gardiens";
-            default: 
-                android.util.Log.d("TEAM_DEBUG", "Unknown teamId: " + teamId + ", returning 'Neutre'");
+            default:
                 return "Neutre";
         }
     }
@@ -820,14 +817,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         double distanceInMeters = 6371000 * c; // Earth radius in meters
         
-        // DEBUG: Afficher les informations de débogage
-        android.util.Log.d("POI_ZONE_DEBUG", "POI: " + poi.name);
-        android.util.Log.d("POI_ZONE_DEBUG", "User location: " + currentUserLocation.getLatitude() + ", " + currentUserLocation.getLongitude());
-        android.util.Log.d("POI_ZONE_DEBUG", "POI location: " + poi.latitude + ", " + poi.longitude);
-        android.util.Log.d("POI_ZONE_DEBUG", "Distance: " + distanceInMeters + "m");
-        android.util.Log.d("POI_ZONE_DEBUG", "Radius: " + poi.radius + "m");
-        android.util.Log.d("POI_ZONE_DEBUG", "Is in zone: " + (distanceInMeters <= poi.radius));
-        
         return distanceInMeters <= poi.radius;
     }
 
@@ -965,8 +954,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private void loadUserMoneyFromFirebase() {
-        android.util.Log.d("HOME_FRAGMENT", "Loading user money from Firebase");
-        
         try {
             SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
             String userId = prefs.getString("user_id", null);
@@ -988,7 +975,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             // Update UI
                             updateMoneyDisplay(money);
                             
-                            android.util.Log.d("HOME_FRAGMENT", "Loaded user money from Firebase: " + money);
                         } else {
                             android.util.Log.w("HOME_FRAGMENT", "User document not found in Firebase");
                         }
@@ -1048,12 +1034,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Update UI
         updateMoneyDisplay(money);
         
-        android.util.Log.d("HOME_FRAGMENT", "User money updated: " + money);
     }
     
     private void loadUserVisitedPois() {
-        android.util.Log.d("HOME_FRAGMENT", "Loading user visited POIs from Firebase");
-        
         try {
             SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
             String userId = prefs.getString("user_id", null);
@@ -1068,26 +1051,20 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             List<Map<String, String>> visited = (List<Map<String, String>>) documentSnapshot.get("visitedPois");
                             visitedPois = visited != null ? visited : new ArrayList<>();
                             
-                            android.util.Log.d("HOME_FRAGMENT", "Loaded " + visitedPois.size() + " visited POIs");
-                            
                             // Update POI display after loading visited POIs
                             updatePoiDistancesAndList();
                         } else {
                             visitedPois = new ArrayList<>();
-                            android.util.Log.d("HOME_FRAGMENT", "User document not found, initializing empty visited POIs list");
                         }
                     })
                     .addOnFailureListener(e -> {
                         visitedPois = new ArrayList<>();
-                        android.util.Log.e("HOME_FRAGMENT", "Error loading visited POIs from Firebase", e);
                     });
             } else {
                 visitedPois = new ArrayList<>();
-                android.util.Log.w("HOME_FRAGMENT", "No user ID found, initializing empty visited POIs list");
             }
         } catch (Exception e) {
             visitedPois = new ArrayList<>();
-            android.util.Log.e("HOME_FRAGMENT", "Exception loading visited POIs", e);
         }
     }
     
@@ -1120,7 +1097,6 @@ private void recordPoiVisit(String poiId) {
                 // Update existing visit date
                 visit.put("visitDate", today);
                 poiFound = true;
-                android.util.Log.d("HOME_FRAGMENT", "Updated visit date for existing POI: " + poiId + " to " + today);
                 break;
             }
         }
@@ -1131,7 +1107,6 @@ private void recordPoiVisit(String poiId) {
             visit.put("poiId", poiId);
             visit.put("visitDate", today);
             visitedPois.add(visit);
-            android.util.Log.d("HOME_FRAGMENT", "Added new visit for POI: " + poiId + " on " + today);
         }
         
         // Save to Firebase
@@ -1146,13 +1121,7 @@ private void recordPoiVisit(String poiId) {
             if (userId != null) {
                 FirebaseFirestore db = FirebaseFirestore.getInstance();
                 db.collection("users").document(userId)
-                    .update("visitedPois", visitedPois)
-                    .addOnSuccessListener(aVoid -> {
-                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved visited POIs to Firebase");
-                    })
-                    .addOnFailureListener(e -> {
-                        android.util.Log.e("HOME_FRAGMENT", "Error saving visited POIs to Firebase", e);
-                    });
+                    .update("visitedPois", visitedPois);
             } else {
                 android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save visited POIs");
             }
