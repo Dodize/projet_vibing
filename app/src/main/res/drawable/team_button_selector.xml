@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- État sélectionné et pressé -->
-    <item android:state_selected="true" android:state_pressed="true">
-        <ripple android:color="#AA000000">
-            <item android:drawable="@drawable/team_button_selected_pressed" />
-        </ripple>
-    </item>
-
     <!-- État sélectionné -->
     <item android:state_selected="true">
         <ripple android:color="#44FFFFFF">
@@ -17,8 +10,8 @@
 
     <!-- État pressé (non sélectionné) -->
     <item android:state_pressed="true">
-        <ripple android:color="#88000000">
-            <item android:drawable="@drawable/team_button_pressed" />
+        <ripple android:color="#446A5AE0">
+            <item android:drawable="@drawable/team_button_unselected" />
         </ripple>
     </item>
 

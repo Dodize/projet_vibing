@@ -27,7 +27,7 @@
         app:backgroundTint="@null"
         app:cornerRadius="30dp"
         android:elevation="8dp"
-        android:stateListAnimator="@animator/button_press_animator"
+        android:stateListAnimator="@null"
         android:visibility="visible" />
 
     <TextView

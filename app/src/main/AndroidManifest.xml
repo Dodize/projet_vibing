@@ -24,7 +24,7 @@
             android:name=".ui.onboarding.TeamSelectionActivity"
             android:exported="false"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Vibing.NoActionBar" />
+            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar" />
             
         <activity
             android:name=".MainActivity"
