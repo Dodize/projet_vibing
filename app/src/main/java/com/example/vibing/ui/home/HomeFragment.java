@@ -568,11 +568,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             
-            android.util.Log.d("HomeFragment", "❌ Permission localisation NON accordée - Affichage popup");
+            android.util.Log.d("HomeFragment", "Permission localisation non accordée - Affichage popup");
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_PERMISSIONS_LOCATION);
         } else {
-            android.util.Log.d("HomeFragment", "✅ Permission localisation DÉJÀ accordée - Démarrage immédiat");
+            android.util.Log.d("HomeFragment", "Permission localisation déjà accordée - Démarrage immédiat");
             startLocationUpdates();
         }
     }
