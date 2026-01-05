@@ -48,6 +48,8 @@ import org.osmdroid.views.overlay.Marker.OnMarkerClickListener;
 import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.infowindow.InfoWindow;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import android.os.Handler;
+import android.os.Looper;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
 
@@ -67,7 +69,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private Marker userMarker;
-    private static final int REQUEST_PERMISSIONS_LOCATION = 1001;
+    private static final int REQUEST_PERMISSIONS_PEDOMETER = 1001;
+    private static final int REQUEST_PERMISSIONS_LOCATION = 1002;
     private RecyclerView poiRecyclerView;
     private PoiListAdapter poiListAdapter;
     private List<PoiItem> poiList;
@@ -540,27 +543,66 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
 
     private void checkLocationPermissions() {
+        // D'ABORD demander permission podomètre PUIS localisation
+        requestPedometerPermission();
+    }
+    
+    private void requestPedometerPermission() {
+        android.util.Log.e("HomeFragment", "🚀 DÉBUT FLUX PERMISSIONS - DEMANDE PODOMÈTRE (ACTIVITY_RECOGNITION)");
+        
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION)
+                != PackageManager.PERMISSION_GRANTED) {
+            
+            android.util.Log.e("HomeFragment", "❌ PODOMÈTER NON ACCORDÉE - AFFICHAGE POPUP");
+            requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
+                    REQUEST_PERMISSIONS_PEDOMETER);
+        } else {
+            android.util.Log.e("HomeFragment", "✅ PODOMÈTER DÉJÀ ACCORDÉE - PASSAGE DIRECT LOCALISATION");
+            checkActualLocationPermissions();
+        }
+    }
+    
+    private void checkActualLocationPermissions() {
+        android.util.Log.d("HomeFragment", "📍 DEMANDE LOCALISATION (ACCESS_FINE_LOCATION)");
+        
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             
-            // Permission is not granted, request it
-            ActivityCompat.requestPermissions(requireActivity(),
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+            android.util.Log.d("HomeFragment", "❌ Permission localisation NON accordée - Affichage popup");
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_PERMISSIONS_LOCATION);
         } else {
-            // Permission already granted, start location updates
+            android.util.Log.d("HomeFragment", "✅ Permission localisation DÉJÀ accordée - Démarrage immédiat");
             startLocationUpdates();
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        android.util.Log.e("HomeFragment", "🔥 onRequestPermissionsResult APPELÉ - requestCode: " + requestCode + " - CE LOG DOIT APPARAÎTRE !!");
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS_LOCATION) {
+        
+        if (requestCode == REQUEST_PERMISSIONS_PEDOMETER) {
+            android.util.Log.e("HomeFragment", "🎯 PODOMÈTER RESULT - grantResults.length: " + grantResults.length);
+            
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted
+                android.util.Log.e("HomeFragment", "✅ Permission podomètre ACCORDÉE - Demande localisation DANS CE LANCEMENT !");
+            } else {
+                android.util.Log.e("HomeFragment", "❌ Permission podomètre REFUSÉE - Demande localisation quand même");
+            }
+            
+            // Attendre 300ms avant de demander la localisation
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                android.util.Log.e("HomeFragment", "🕐 DELAY ÉCOULÉ - DEMANDE LOCALISATION MAINTENANT !");
+                checkActualLocationPermissions();
+            }, 300);
+            
+        } else if (requestCode == REQUEST_PERMISSIONS_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.d("HomeFragment", "✅ Permission localisation ACCORDÉE - Démarrage mise à jour localisation");
                 startLocationUpdates();
             } else {
+                android.util.Log.d("HomeFragment", "❌ Permission localisation REFUSÉE - Utilisation position par défaut");
                 // Permission denied. Use Toulouse as fallback location.
                 if (userMarker != null) {
                     userMarker.setTitle("Permission de localisation refusée");
@@ -620,6 +662,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             });
         }
     }
+    
+
 
     private void stopLocationUpdates() {
         if (fusedLocationClient != null && locationCallback != null) {
@@ -657,15 +701,15 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        stopLocationUpdates(); // Ensure updates are stopped on destruction
-        if (mapView != null) {
-            mapView.onDetach(); // Detach map resources
-        }
+        binding = null;
+        
+        // Stop location updates to save battery
+        stopLocationUpdates();
+        
         // Clean up info bubble
         if (currentInfoBubble != null && currentInfoBubble.getParent() != null) {
             ((ViewGroup) currentInfoBubble.getParent()).removeView(currentInfoBubble);
         }
-        binding = null;
     }
 
     @Override
