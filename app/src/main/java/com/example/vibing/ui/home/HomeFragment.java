@@ -548,22 +548,22 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private void requestPedometerPermission() {
-        android.util.Log.e("HomeFragment", "🚀 DÉBUT FLUX PERMISSIONS - DEMANDE PODOMÈTRE (ACTIVITY_RECOGNITION)");
+        android.util.Log.d("HomeFragment", "Début flux permissions - Demande podomètre (ACTIVITY_RECOGNITION)");
         
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION)
                 != PackageManager.PERMISSION_GRANTED) {
             
-            android.util.Log.e("HomeFragment", "❌ PODOMÈTER NON ACCORDÉE - AFFICHAGE POPUP");
+            android.util.Log.d("HomeFragment", "Permission podomètre non accordée - Affichage popup");
             requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
                     REQUEST_PERMISSIONS_PEDOMETER);
         } else {
-            android.util.Log.e("HomeFragment", "✅ PODOMÈTER DÉJÀ ACCORDÉE - PASSAGE DIRECT LOCALISATION");
+            android.util.Log.d("HomeFragment", "Permission podomètre déjà accordée - Passage direct localisation");
             checkActualLocationPermissions();
         }
     }
     
     private void checkActualLocationPermissions() {
-        android.util.Log.d("HomeFragment", "📍 DEMANDE LOCALISATION (ACCESS_FINE_LOCATION)");
+        android.util.Log.d("HomeFragment", "Demande localisation (ACCESS_FINE_LOCATION)");
         
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -579,30 +579,27 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        android.util.Log.e("HomeFragment", "🔥 onRequestPermissionsResult APPELÉ - requestCode: " + requestCode + " - CE LOG DOIT APPARAÎTRE !!");
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         
         if (requestCode == REQUEST_PERMISSIONS_PEDOMETER) {
-            android.util.Log.e("HomeFragment", "🎯 PODOMÈTER RESULT - grantResults.length: " + grantResults.length);
-            
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                android.util.Log.e("HomeFragment", "✅ Permission podomètre ACCORDÉE - Demande localisation DANS CE LANCEMENT !");
+                android.util.Log.d("HomeFragment", "Permission podomètre accordée");
             } else {
-                android.util.Log.e("HomeFragment", "❌ Permission podomètre REFUSÉE - Demande localisation quand même");
+                android.util.Log.d("HomeFragment", "Permission podomètre refusée");
             }
             
             // Attendre 300ms avant de demander la localisation
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                android.util.Log.e("HomeFragment", "🕐 DELAY ÉCOULÉ - DEMANDE LOCALISATION MAINTENANT !");
+                android.util.Log.d("HomeFragment", "Délai écoulé - Demande localisation");
                 checkActualLocationPermissions();
             }, 300);
             
         } else if (requestCode == REQUEST_PERMISSIONS_LOCATION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                android.util.Log.d("HomeFragment", "✅ Permission localisation ACCORDÉE - Démarrage mise à jour localisation");
+                android.util.Log.d("HomeFragment", "Permission localisation accordée - Démarrage localisation");
                 startLocationUpdates();
             } else {
-                android.util.Log.d("HomeFragment", "❌ Permission localisation REFUSÉE - Utilisation position par défaut");
+                android.util.Log.d("HomeFragment", "Permission localisation refusée - Position par défaut");
                 // Permission denied. Use Toulouse as fallback location.
                 if (userMarker != null) {
                     userMarker.setTitle("Permission de localisation refusée");
