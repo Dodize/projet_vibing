@@ -18,7 +18,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Veuillez prendre une photo de la zone pour vérifier que vous êtes bien au bon endroit avant de commencer le quiz."
+        android:text="Veuillez prendre une photo en direct de la zone pour vérifier que vous êtes bien au bon endroit avant de commencer le quiz."
         android:textSize="14sp"
         android:gravity="center"
         android:layout_marginBottom="24dp" />
@@ -32,29 +32,12 @@
         android:visibility="gone"
         android:layout_marginBottom="16dp" />
 
-    <LinearLayout
+    <Button
+        android:id="@+id/capturePhotoButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
-
-        <Button
-            android:id="@+id/capturePhotoButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📷 Prendre photo"
-            android:layout_marginEnd="8dp" />
-
-        <Button
-            android:id="@+id/selectPhotoButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="📁 Galerie"
-            android:layout_marginStart="8dp" />
-
-    </LinearLayout>
+        android:text="📷 Prendre une photo"
+        android:layout_marginBottom="16dp" />
 
     <Button
         android:id="@+id/recognizeButton"

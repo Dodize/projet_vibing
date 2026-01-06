@@ -34,11 +34,9 @@ public class CameraCaptureFragment extends Fragment {
     private static final String TAG = "CameraCaptureFragment";
     private static final int REQUEST_CAMERA_PERMISSION = 100;
     private static final int REQUEST_IMAGE_CAPTURE = 101;
-    private static final int REQUEST_IMAGE_PICK = 102;
     
     private ImageView capturedImageView;
     private Button capturePhotoButton;
-    private Button selectPhotoButton;
     private Button recognizeButton;
     private TextView resultTextView;
     private ImageRecognitionService imageRecognitionService;
@@ -75,9 +73,10 @@ public class CameraCaptureFragment extends Fragment {
         
         capturedImageView = view.findViewById(R.id.capturedImageView);
         capturePhotoButton = view.findViewById(R.id.capturePhotoButton);
-        selectPhotoButton = view.findViewById(R.id.selectPhotoButton);
         recognizeButton = view.findViewById(R.id.recognizeButton);
         resultTextView = view.findViewById(R.id.resultTextView);
+        
+        // Gallery button removed from layout - only camera capture allowed
         
         // Set title
         if (poiName != null) {
@@ -87,7 +86,6 @@ public class CameraCaptureFragment extends Fragment {
         
         // Set click listeners
         capturePhotoButton.setOnClickListener(v -> checkCameraPermissionAndCapture());
-        selectPhotoButton.setOnClickListener(v -> openImagePicker());
         recognizeButton.setOnClickListener(v -> recognizeImage());
         
         // Initially hide recognize button and result
@@ -115,10 +113,7 @@ public class CameraCaptureFragment extends Fragment {
         }
     }
     
-    private void openImagePicker() {
-        Intent pickPhotoIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(pickPhotoIntent, REQUEST_IMAGE_PICK);
-    }
+    // Gallery selection removed - only camera capture allowed
     
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -130,12 +125,8 @@ public class CameraCaptureFragment extends Fragment {
                     Bundle extras = data.getExtras();
                     capturedBitmap = (Bitmap) extras.get("data");
                     displayCapturedImage();
-                } else if (requestCode == REQUEST_IMAGE_PICK) {
-                    Uri selectedImage = data.getData();
-                    capturedBitmap = BitmapFactory.decodeStream(requireActivity().getContentResolver().openInputStream(selectedImage));
-                    displayCapturedImage();
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 Log.e(TAG, "Error loading image", e);
                 Toast.makeText(getContext(), "Erreur lors du chargement de l'image", Toast.LENGTH_SHORT).show();
             }
