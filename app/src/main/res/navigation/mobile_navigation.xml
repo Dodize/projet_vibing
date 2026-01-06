@@ -34,10 +34,28 @@
         <argument
             android:name="poiOwningTeam"
             app:argType="integer" />
+        
+        <action
+            android:id="@+id/action_poiScoreFragment_to_cameraCaptureFragment"
+            app:destination="@id/cameraCaptureFragment" />
     </fragment>
 
     <action
         android:id="@+id/action_homeFragment_to_poiScoreFragment"
         app:destination="@id/poiScoreFragment" />
+
+    <fragment
+        android:id="@+id/cameraCaptureFragment"
+        android:name="com.example.vibing.ui.camera.CameraCaptureFragment"
+        android:label="Capture de zone"
+        tools:layout="@layout/fragment_camera_capture" >
+        
+        <argument
+            android:name="poiName"
+            app:argType="string" />
+        <argument
+            android:name="poiId"
+            app:argType="string" />
+    </fragment>
 
 </navigation>
