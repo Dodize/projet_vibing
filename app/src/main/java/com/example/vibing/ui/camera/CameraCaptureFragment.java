@@ -187,17 +187,14 @@ public class CameraCaptureFragment extends Fragment {
     }
     
     private void navigateToQuiz() {
-        // Navigate back to PoiScoreFragment and trigger quiz
-        androidx.navigation.NavController navController = androidx.navigation.Navigation.findNavController(requireView());
-        navController.navigateUp(); // Go back to PoiScoreFragment
+        // Set result before navigating back
+        Bundle result = new Bundle();
+        result.putBoolean("quizShouldStart", true);
+        getParentFragmentManager().setFragmentResult("cameraResult", result);
         
-        // Show success message and trigger quiz after a short delay
-        new android.os.Handler().postDelayed(() -> {
-            if (getActivity() != null) {
-                Toast.makeText(getActivity(), "Zone reconnue! Lancement du quiz...", Toast.LENGTH_SHORT).show();
-                // The parent fragment will handle showing the quiz
-            }
-        }, 1000);
+        // Navigate back to PoiScoreFragment
+        androidx.navigation.NavController navController = androidx.navigation.Navigation.findNavController(requireView());
+        navController.navigateUp();
     }
     
     @Override

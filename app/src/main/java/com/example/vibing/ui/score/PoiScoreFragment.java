@@ -37,6 +37,8 @@ import com.example.vibing.models.QuizQuestion;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
 import com.example.vibing.ui.camera.CameraCaptureFragment;
+
+import androidx.fragment.app.FragmentResultListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -82,6 +84,23 @@ public class PoiScoreFragment extends Fragment {
         
         // Enable back button in toolbar
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        
+        // Listen for camera capture results
+        getParentFragmentManager().setFragmentResultListener("cameraResult", this, new FragmentResultListener() {
+            @Override
+            public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
+                if (result.getBoolean("quizShouldStart", false)) {
+                    // Show success message first
+                    Toast.makeText(getContext(), "Zone reconnue! Lancement du quiz...", Toast.LENGTH_SHORT).show();
+                    
+                    // Start quiz after a short delay
+                    new android.os.Handler().postDelayed(() -> {
+                        showLoadingDialog();
+                        showQuizDialog();
+                    }, 1000);
+                }
+            }
+        });
         
         // Initialize team names cache from Firebase
         initializeTeamNamesCache();
