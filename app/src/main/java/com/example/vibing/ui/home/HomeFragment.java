@@ -1077,10 +1077,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             moneyTextView.setText("Argent: " + money + "€");
         }
     }
-    
-<<<<<<< HEAD
-    
-=======
     private void loadUserMoneyFromFirebase() {
         try {
             SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
@@ -1257,7 +1253,6 @@ private void recordPoiVisit(String poiId) {
             android.util.Log.e("HOME_FRAGMENT", "Exception saving visited POIs", e);
         }
     }
->>>>>>> develop
     
 
 }
