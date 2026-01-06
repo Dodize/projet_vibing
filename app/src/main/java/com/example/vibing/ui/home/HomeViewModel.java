@@ -35,21 +35,24 @@ public class HomeViewModel extends ViewModel {
     private void loadPois() {
         try {
             db.collection("pois")
-                    .get()
-                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                        List<Poi> poiList = new ArrayList<>();
-                        for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                            // Create POI manually from document data
-                            Poi poi = createPoiFromDocument(document);
-                            poiList.add(poi);
+                    .addSnapshotListener((queryDocumentSnapshots, e) -> {
+                        if (e != null) {
+                            android.util.Log.e("HOME_VIEWMODEL", "Error listening to POI updates", e);
+                            return;
                         }
-                        pois.setValue(poiList);
-                    })
-                    .addOnFailureListener(e -> {
-                        // Fallback to test data
-                        loadTestPois();
+                        
+                        if (queryDocumentSnapshots != null) {
+                            List<Poi> poiList = new ArrayList<>();
+                            for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                                // Create POI manually from document data
+                                Poi poi = createPoiFromDocument(document);
+                                poiList.add(poi);
+                            }
+                            pois.setValue(poiList);
+                        }
                     });
         } catch (Exception e) {
+            android.util.Log.e("HOME_VIEWMODEL", "Exception setting up POI listener", e);
             // Fallback to test data
             loadTestPois();
         }
@@ -64,7 +67,7 @@ public class HomeViewModel extends ViewModel {
         capitole.setName("Capitole de Toulouse");
         capitole.setLatitude(43.6047);
         capitole.setLongitude(1.4442);
-        capitole.setScore(500);
+        capitole.setScore(100);
         capitole.setOwningTeam(0);
         testPois.add(capitole);
         
@@ -73,7 +76,7 @@ public class HomeViewModel extends ViewModel {
         zenith.setName("Zénith de Toulouse");
         zenith.setLatitude(43.5819);
         zenith.setLongitude(1.4337);
-        zenith.setScore(250);
+        zenith.setScore(100);
         zenith.setOwningTeam(0);
         testPois.add(zenith);
         
@@ -82,7 +85,7 @@ public class HomeViewModel extends ViewModel {
         basilique.setName("Basilique Saint-Sernin");
         basilique.setLatitude(43.6082);
         basilique.setLongitude(1.4408);
-        basilique.setScore(600);
+        basilique.setScore(100);
         basilique.setOwningTeam(0);
         testPois.add(basilique);
         
@@ -91,7 +94,7 @@ public class HomeViewModel extends ViewModel {
         pontNeuf.setName("Pont Neuf de Toulouse");
         pontNeuf.setLatitude(43.6032);
         pontNeuf.setLongitude(1.4302);
-        pontNeuf.setScore(350);
+        pontNeuf.setScore(100);
         pontNeuf.setOwningTeam(0);
         testPois.add(pontNeuf);
         
@@ -141,20 +144,9 @@ public class HomeViewModel extends ViewModel {
             }
         }
         
-        // Extract score
-        if (data.containsKey("currentScore")) {
-            Object score = data.get("currentScore");
-            if (score instanceof Number) {
-                poi.setScore(((Number) score).intValue());
-            }
-        } else if (data.containsKey("score")) {
-            Object score = data.get("score");
-            if (score instanceof Number) {
-                poi.setScore(((Number) score).intValue());
-            }
-        }
+        // Force score to 100 for all POIs
+        poi.setScore(100);
         
-        // Extract owning team
         if (data.containsKey("ownerTeamId")) {
             String teamId = (String) data.get("ownerTeamId");
             if (teamId != null && !teamId.equals("null") && !teamId.isEmpty()) {
@@ -163,29 +155,48 @@ public class HomeViewModel extends ViewModel {
                     if (teamId.startsWith("team_")) {
                         String teamNumber = teamId.substring(5); // Remove "team_" prefix
                         int teamIdInt = Integer.parseInt(teamNumber);
+                        
+                        // Convert team 5+ to neutral (0)
+                        if (teamIdInt >= 5) {
+                            teamIdInt = 0;
+                        }
+                        
                         poi.setOwningTeam(teamIdInt);
+                        // Also set ownerTeamId for consistency
+                        poi.setOwnerTeamId("team_" + teamIdInt);
                     } else {
-                        // Try direct parsing as fallback
+                        // Handle direct number format
                         int teamIdInt = Integer.parseInt(teamId);
+                        
+                        // Convert team 5+ to neutral (0)
+                        if (teamIdInt >= 5) {
+                            teamIdInt = 0;
+                        }
+                        
                         poi.setOwningTeam(teamIdInt);
+                        // Also set ownerTeamId for consistency
+                        poi.setOwnerTeamId("team_" + teamIdInt);
                     }
                 } catch (NumberFormatException e) {
                     poi.setOwningTeam(0); // neutral
                     android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' failed to parse team ID, setting to neutral");
+                    // Also set ownerTeamId for consistency
+                    poi.setOwnerTeamId("team_0");
                 }
             } else {
-                poi.setOwningTeam(0); // neutral
-            }
-        } else if (data.containsKey("owningTeam")) {
-            Object team = data.get("owningTeam");
-            if (team instanceof Number) {
-                int teamId = ((Number) team).intValue();
-                poi.setOwningTeam(teamId);
+                poi.setOwningTeam(0); // neutral by default
+                poi.setOwnerTeamId("team_0");
+                android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has null ownerTeamId, setting to neutral");
             }
         } else {
-            // No team field found, setting to neutral
+            poi.setOwningTeam(0); // neutral by default
+            poi.setOwnerTeamId("team_0");
+            android.util.Log.d("TEAM_DEBUG", "POI '" + poi.getName() + "' has no ownerTeamId field, setting to neutral");
         }
         
         return poi;
     }
 }
+
+
+

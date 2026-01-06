@@ -13,7 +13,7 @@ L'objectif principal est de créer une application mobile Android permettant aux
 ### 3.1. Gestion des Utilisateurs et des Équipes
 
 *   **Équipes :**
-    *   Il y aura **5 équipes** au total.
+    *   Il y aura **4 équipes** au total.
     *   Les utilisateurs doivent choisir leur équipe lors du premier lancement de l'application.
     *   Chaque équipe se verra attribuer une **couleur** unique pour la représentation visuelle.
 *   **Utilisateurs :**

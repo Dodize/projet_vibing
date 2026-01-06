@@ -7,7 +7,7 @@ public class Poi {
     private double latitude;
     private double longitude;
     private int score;
-    private int owningTeam; // 0 = neutral, 1-5 = teams
+    private int owningTeam; // 0 = neutral, 1-4 = teams
     private String id;
     private double radius; // Rayon de la zone cliquable en mètres
     
@@ -15,6 +15,8 @@ public class Poi {
     private Map<String, Object> location;
     private Integer currentScore;
     private String ownerTeamId;
+    private java.util.Date captureTime;
+    private java.util.Date lastUpdated;
     
     // Raw data map for manual extraction
     private Map<String, Object> rawData;
@@ -155,18 +157,42 @@ public class Poi {
     }
 
     public int getOwningTeam() {
+        android.util.Log.d("POI_DEBUG", "getOwningTeam() called for POI: " + name);
+        android.util.Log.d("POI_DEBUG", "ownerTeamId: " + ownerTeamId + ", owningTeam: " + owningTeam);
+        
         // Handle both owningTeam and ownerTeamId fields
         if (ownerTeamId != null) {
             if (ownerTeamId.equals("null") || ownerTeamId.isEmpty()) {
+                android.util.Log.d("POI_DEBUG", "ownerTeamId is null or empty, returning 0 (neutral)");
                 return 0; // neutral team
             }
             try {
-                return Integer.parseInt(ownerTeamId);
+                // Handle both "2" and "team_2" formats
+                if (ownerTeamId.startsWith("team_")) {
+                    int result = Integer.parseInt(ownerTeamId.substring(5));
+                    // Convert team 5+ to neutral (0)
+                    if (result >= 5) {
+                        result = 0;
+                        android.util.Log.d("POI_DEBUG", "Converted team 5+ to neutral (0)");
+                    }
+                    android.util.Log.d("POI_DEBUG", "Parsed team_ format, returning: " + result);
+                    return result;
+                }
+                int result = Integer.parseInt(ownerTeamId);
+                // Convert team 5+ to neutral (0)
+                if (result >= 5) {
+                    result = 0;
+                    android.util.Log.d("POI_DEBUG", "Converted team 5+ to neutral (0)");
+                }
+                android.util.Log.d("POI_DEBUG", "Parsed direct format, returning: " + result);
+                return result;
             } catch (NumberFormatException e) {
+                android.util.Log.e("POI_DEBUG", "Failed to parse ownerTeamId: " + ownerTeamId + ", returning 0 (neutral)", e);
                 // If ownerTeamId is not a number, return 0 (neutral)
                 return 0;
             }
         }
+        android.util.Log.d("POI_DEBUG", "ownerTeamId is null, returning owningTeam: " + owningTeam);
         return owningTeam;
     }
 
@@ -180,6 +206,36 @@ public class Poi {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public java.util.Date getCaptureTime() {
+        // Try raw data map first for captureTime
+        if (rawData != null && rawData.containsKey("captureTime")) {
+            Object captureObj = rawData.get("captureTime");
+            if (captureObj instanceof java.util.Date) {
+                return (java.util.Date) captureObj;
+            }
+        }
+        return captureTime;
+    }
+
+    public void setCaptureTime(java.util.Date captureTime) {
+        this.captureTime = captureTime;
+    }
+
+    public java.util.Date getLastUpdated() {
+        // Try raw data map first for lastUpdated
+        if (rawData != null && rawData.containsKey("lastUpdated")) {
+            Object lastUpdatedObj = rawData.get("lastUpdated");
+            if (lastUpdatedObj instanceof java.util.Date) {
+                return (java.util.Date) lastUpdatedObj;
+            }
+        }
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(java.util.Date lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
     
     public double getRadius() {
@@ -196,5 +252,13 @@ public class Poi {
     
     public void setRadius(double radius) {
         this.radius = radius;
+    }
+    
+    public String getOwnerTeamId() {
+        return ownerTeamId;
+    }
+    
+    public void setOwnerTeamId(String ownerTeamId) {
+        this.ownerTeamId = ownerTeamId;
     }
 }

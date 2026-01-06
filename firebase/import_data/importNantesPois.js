@@ -31,7 +31,7 @@ const nantesPoisData = {
     "name": "Musée Jules Verne",
     "location": { "latitude": 47.2075, "longitude": -1.5586 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   
@@ -109,7 +109,7 @@ const nantesPoisData = {
     "name": "Cathédrale Saint-Pierre-et-Saint-Paul",
     "location": { "latitude": 47.2148, "longitude": -1.5536 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_basilique_saint_nicolas": {
@@ -155,7 +155,7 @@ const nantesPoisData = {
     "name": "Stade de la Beaujoire",
     "location": { "latitude": 47.2569, "longitude": -1.5256 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_zenith_nantes": {
@@ -242,7 +242,7 @@ const nantesPoisData = {
     "name": "Île de Nantes",
     "location": { "latitude": 47.2075, "longitude": -1.5586 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   }
 };

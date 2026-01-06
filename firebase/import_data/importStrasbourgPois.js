@@ -24,7 +24,7 @@ const strasbourgPoisData = {
     "name": "Maison Kammerzell",
     "location": { "latitude": 48.5814, "longitude": 7.7507 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_place_kleber": {
@@ -162,7 +162,7 @@ const strasbourgPoisData = {
     "name": "Conseil de l'Europe",
     "location": { "latitude": 48.5814, "longitude": 7.7507 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_cour_europeenne": {
@@ -242,7 +242,7 @@ const strasbourgPoisData = {
     "name": "Marché de Noël de Strasbourg",
     "location": { "latitude": 48.5814, "longitude": 7.7507 },
     "ownerTeamId": null,
-    "currentScore": 500,
+    "currentScore": 100,
     "lastUpdated": admin.firestore.Timestamp.fromDate(new Date("2025-11-14T10:00:00Z")),
   },
   "poi_batorama": {

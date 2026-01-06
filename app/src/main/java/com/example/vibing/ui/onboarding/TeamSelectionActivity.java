@@ -8,6 +8,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -162,12 +165,12 @@ private void loadTeams() {
             return;
         }
         
-        if (selectedTeam == null) {
+if (selectedTeam == null) {
             Toast.makeText(this, "Veuillez sélectionner une équipe", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        saveUserToDatabase(username, selectedTeam);
+        checkUsernameExists(username, selectedTeam);
     }
     
     private void updateContinueButtonState() {
@@ -182,6 +185,28 @@ private void loadTeams() {
             continueButton.setAlpha(0.3f);
             continueButton.setBackgroundColor(getResources().getColor(android.R.color.darker_gray, null));
         }
+}
+
+    private void checkUsernameExists(String username, Team team) {
+        progressBar.setVisibility(View.VISIBLE);
+        
+        db.collection("users")
+                .whereEqualTo("username", username)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        // Le nom d'utilisateur existe déjà
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(this, "Ce nom d'utilisateur est déjà pris", Toast.LENGTH_LONG).show();
+                    } else {
+                        // Le nom d'utilisateur est disponible, procéder à l'inscription
+                        saveUserToDatabase(username, team);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(this, "Erreur lors de la vérification du nom: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
     private void saveUserToDatabase(String username, Team team) {
@@ -215,8 +240,22 @@ private void saveUserPreferences(User user) {
         editor.putString("team_id", user.getTeamId());
         editor.putString("team_name", user.getTeamName());
         editor.putInt("money", user.getMoney());
-        editor.putBoolean("is_first_launch", false);
         editor.apply();
+        
+        // Create first launch file to indicate user has been created
+        createFirstLaunchFile();
+    }
+    
+    private void createFirstLaunchFile() {
+        try {
+            File firstLaunchFile = new File(getFilesDir(), "first_launch.txt");
+            FileOutputStream fos = new FileOutputStream(firstLaunchFile);
+            fos.write("first_launch_completed".getBytes());
+            fos.close();
+        } catch (IOException e) {
+            // Log error but don't fail the user creation process
+            android.util.Log.e("TeamSelectionActivity", "Error creating first launch file", e);
+        }
     }
 
     private boolean canJoinTeam(Team team) {
