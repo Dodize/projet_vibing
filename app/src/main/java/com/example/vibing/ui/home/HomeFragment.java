@@ -376,8 +376,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Display user information from SharedPreferences
         displayUserInfo();
         
-        // Setup test popup button
-        setupTestPopupButton();
+        
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
@@ -953,33 +952,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
     }
     
-    private void setupTestPopupButton() {
-        Button testButton = binding.getRoot().findViewById(R.id.test_popup_button);
-        if (testButton != null) {
-            testButton.setOnClickListener(v -> {
-                android.util.Log.d("POPUP_DEBUG", "Test button clicked - forcing zone check");
-                checkForNewlyEnteredPoiZones();
-                
-                // Also show a test popup if in any zone
-                if (poiList != null && currentUserLocation != null) {
-                    List<PoiItem> poisInZone = new ArrayList<>();
-                    for (PoiItem poi : poiList) {
-                        if (isUserInPoiZone(poi)) {
-                            poisInZone.add(poi);
-                        }
-                    }
-                    
-                    if (!poisInZone.isEmpty()) {
-                        android.util.Log.d("POPUP_DEBUG", "Forcing popup for " + poisInZone.size() + " POIs in zone");
-                        showPoiQuizPopup(poisInZone);
-                    } else {
-                        android.util.Log.d("POPUP_DEBUG", "No POIs in zone for test");
-                        Toast.makeText(getContext(), "Vous n'êtes dans aucune zone de POI", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        }
-    }
+    
     
 
 }
