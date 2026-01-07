@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -165,7 +166,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             holder.poiDistanceTextView.setText(distanceText);
             
             // Check if POI was visited today and update appearance
+            android.util.Log.d("POI_VISIT_DEBUG", "LIST Checking POI: " + poi.name + " (ID: " + poi.id + ")");
             boolean isVisitedToday = isPoiVisitedToday(poi.id);
+            android.util.Log.d("POI_VISIT_DEBUG", "LIST Result for " + poi.name + ": visitedToday=" + isVisitedToday);
             
             if (isVisitedToday) {
                 holder.poiNameTextView.setTextColor(0xFF808080); // Gray text
@@ -216,8 +219,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             }
         }
     }
-    // --- End Simple POI Adapter ---
+     // --- End Simple POI Adapter ---
 
+    // Flag to track if visited POIs have been loaded
+    private boolean visitedPoisLoaded = false;
 
     private void initializePOIsFromFirebase() {
         homeViewModel.getPois().observe(getViewLifecycleOwner(), pois -> {
@@ -275,10 +280,56 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 // Force map refresh
                 mapView.invalidate();
                 
-                // Check for POI zones after POIs are loaded
-                checkForNewlyEnteredPoiZones();
+                // Check for POI zones after POIs are loaded, but only if visited POIs are loaded
+                checkForPoiZonesWhenReady();
             }
         });
+    }
+
+    private void checkForPoiZonesWhenReady() {
+        android.util.Log.d("POI_SYNC_DEBUG", "checkForPoiZonesWhenReady called - visitedPoisLoaded: " + visitedPoisLoaded);
+        
+        if (visitedPoisLoaded) {
+            // Visited POIs are loaded, we can check for zones immediately
+            checkForNewlyEnteredPoiZones();
+        } else {
+            // Visited POIs not loaded yet, wait and retry
+            android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs not loaded yet, waiting...");
+            
+            // Wait for visited POIs to be loaded (with timeout)
+            waitForVisitedPoisAndCheckZones();
+        }
+    }
+
+    private void waitForVisitedPoisAndCheckZones() {
+        // Check every 500ms for up to 5 seconds
+        final int maxRetries = 10;
+        final long retryDelay = 500;
+        
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final Runnable[] runnable = new Runnable[1];
+        final int[] retryCount = {0};
+        
+        runnable[0] = new Runnable() {
+            @Override
+            public void run() {
+                retryCount[0]++;
+                android.util.Log.d("POI_SYNC_DEBUG", "Checking visited POIs status, attempt " + retryCount[0] + "/10");
+                
+                if (visitedPoisLoaded || visitedPois != null) {
+                    android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs now loaded, checking zones");
+                    checkForNewlyEnteredPoiZones();
+                } else if (retryCount[0] < maxRetries) {
+                    android.util.Log.d("POI_SYNC_DEBUG", "Still waiting for visited POIs, retrying in 500ms");
+                    handler.postDelayed(this, retryDelay);
+                } else {
+                    android.util.Log.w("POI_SYNC_DEBUG", "Timeout waiting for visited POIs, proceeding anyway");
+                    checkForNewlyEnteredPoiZones();
+                }
+            }
+        };
+        
+        handler.postDelayed(runnable[0], retryDelay);
     }
     
     private String getTeamName(int teamId) {
@@ -838,6 +889,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     
     private void checkForNewlyEnteredPoiZones() {
         android.util.Log.d("POPUP_DEBUG", "checkForNewlyEnteredPoiZones called");
+        android.util.Log.d("POI_SYNC_DEBUG", "visitedPois status: " + (visitedPois != null ? "loaded (" + visitedPois.size() + " items)" : "null"));
         
         if (poiList == null) {
             android.util.Log.d("POPUP_DEBUG", "poiList is null");
@@ -849,6 +901,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             return;
         }
         
+        // Additional safety check - if visited POIs are still not loaded, wait
+        if (!visitedPoisLoaded && visitedPois == null) {
+            android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs still not loaded, postponing zone check");
+            waitForVisitedPoisAndCheckZones();
+            return;
+        }
+        
         android.util.Log.d("POPUP_DEBUG", "Checking " + poiList.size() + " POIs");
         
         List<PoiItem> currentlyEnteredPois = new ArrayList<>();
@@ -856,7 +915,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Find all POIs the user is currently in zone for
         for (PoiItem poi : poiList) {
             boolean inZone = isUserInPoiZone(poi);
-            android.util.Log.d("POPUP_DEBUG", "POI " + poi.name + " in zone: " + inZone);
             if (inZone) {
                 currentlyEnteredPois.add(poi);
             }
@@ -876,17 +934,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
         
         // Show popup if user entered new POI zones
-        if (!newlyEnteredPois.isEmpty() && !hasShownPopupForCurrentLocation) {
+        if (!newlyEnteredPois.isEmpty()) {
             android.util.Log.d("POPUP_DEBUG", "Should show popup for " + newlyEnteredPois.size() + " POIs");
+            android.util.Log.d("POI_VISIT_DEBUG", "About to call popup with visitedPois status: " + (visitedPois != null ? "not null" : "null"));
             showPoiQuizPopup(newlyEnteredPois);
-            hasShownPopupForCurrentLocation = true;
         }
         
-        // If user is not in any POI zone anymore, reset the popup flag
-        if (currentlyEnteredPois.isEmpty()) {
-            hasShownPopupForCurrentLocation = false;
-            android.util.Log.d("POPUP_DEBUG", "Reset popup flag - no zones");
-        }
+
         
         // Update the previously entered POIs list
         previouslyEnteredPoiNames.clear();
@@ -900,11 +954,27 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             return;
         }
         
+        // Filter out POIs that have already been visited today
+        List<PoiItem> eligiblePois = new ArrayList<>();
+        for (PoiItem poi : newlyEnteredPois) {
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP Checking POI: " + poi.name + " (ID: " + poi.id + ")");
+            boolean visitedToday = isPoiVisitedToday(poi.id);
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP Result for " + poi.name + ": visitedToday=" + visitedToday);
+            if (!visitedToday) {
+                eligiblePois.add(poi);
+            }
+        }
+        
+        if (eligiblePois.isEmpty()) {
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP All POIs have been visited today, not showing popup");
+            return;
+        }
+        
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         
-        if (newlyEnteredPois.size() == 1) {
+        if (eligiblePois.size() == 1) {
             // Single POI entered
-            PoiItem poi = newlyEnteredPois.get(0);
+            PoiItem poi = eligiblePois.get(0);
             builder.setTitle("🎯 Zone de POI détectée!")
                   .setMessage("Vous êtes dans la zone de " + poi.name + " !\n\nScore actuel: " + poi.score + "\nVoulez-vous lancer le quiz pour capturer ce POI ?");
             
@@ -916,8 +986,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         } else {
             // Multiple POIs entered
             StringBuilder message = new StringBuilder("Vous êtes dans la zone de plusieurs POIs !\n\n");
-            for (int i = 0; i < newlyEnteredPois.size(); i++) {
-                PoiItem poi = newlyEnteredPois.get(i);
+            for (int i = 0; i < eligiblePois.size(); i++) {
+                PoiItem poi = eligiblePois.get(i);
                 message.append((i + 1)).append(". ").append(poi.name)
                        .append(" (Score: ").append(poi.score).append(")\n");
             }
@@ -927,7 +997,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                   .setMessage(message.toString());
             
             // Create buttons for each POI
-            for (PoiItem poi : newlyEnteredPois) {
+            for (PoiItem poi : eligiblePois) {
                 builder.setPositiveButton(poi.name, (dialog, which) -> {
                     navigateToPoiScore(poi);
                     dialog.dismiss();
@@ -1174,35 +1244,54 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             @SuppressWarnings("unchecked")
                             List<Map<String, String>> visited = (List<Map<String, String>>) documentSnapshot.get("visitedPois");
                             visitedPois = visited != null ? visited : new ArrayList<>();
-                            
-                            // Update POI display after loading visited POIs
-                            updatePoiDistancesAndList();
                         } else {
                             visitedPois = new ArrayList<>();
                         }
+                        
+                        // Mark visited POIs as loaded
+                        visitedPoisLoaded = true;
+                        android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs loaded, count: " + visitedPois.size());
+                        
+                        // Update POI display after loading visited POIs
+                        updatePoiDistancesAndList();
                     })
                     .addOnFailureListener(e -> {
                         visitedPois = new ArrayList<>();
+                        visitedPoisLoaded = true;
+                        android.util.Log.w("POI_SYNC_DEBUG", "Failed to load visited POIs, using empty list");
                     });
             } else {
                 visitedPois = new ArrayList<>();
+                visitedPoisLoaded = true;
+                android.util.Log.d("POI_SYNC_DEBUG", "No user ID found, marking visited POIs as loaded with empty list");
             }
         } catch (Exception e) {
             visitedPois = new ArrayList<>();
+            visitedPoisLoaded = true;
+            android.util.Log.e("POI_SYNC_DEBUG", "Exception loading visited POIs, using empty list", e);
         }
     }
     
     private boolean isPoiVisitedToday(String poiId) {
-        if (visitedPois == null) return false;
+        if (visitedPois == null) {
+            android.util.Log.d("POI_VISIT_DEBUG", "visitedPois is null, returning false for " + poiId);
+            return false;
+        }
         
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         String today = dateFormat.format(new Date());
         
         for (Map<String, String> visit : visitedPois) {
-            if (poiId.equals(visit.get("poiId")) && today.equals(visit.get("visitDate"))) {
+            String visitedPoiId = visit.get("poiId");
+            String visitDate = visit.get("visitDate");
+            
+            if (poiId.equals(visitedPoiId) && today.equals(visitDate)) {
+                android.util.Log.d("POI_VISIT_DEBUG", "Found match: POI " + poiId + " visited today");
                 return true;
             }
         }
+        
+        android.util.Log.d("POI_VISIT_DEBUG", "No match found: POI " + poiId + " not visited today");
         return false;
     }
     
