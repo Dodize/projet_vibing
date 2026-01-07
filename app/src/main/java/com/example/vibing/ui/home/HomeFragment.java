@@ -1276,11 +1276,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
     }
     
-    // Easter egg: Handle admin tap detection
+// Easter egg: Handle admin tap detection
     private void handleAdminTap(MotionEvent e) {
         long currentTime = System.currentTimeMillis();
         
-        // Reset if this is the first tap or timeout occurred
+        // Reset if this is first tap or timeout occurred
         if (adminTapCount == 0) {
             adminFirstTapTime = currentTime;
         } else if (currentTime - adminFirstTapTime > ADMIN_TAP_TIMEOUT_MS) {
@@ -1291,22 +1291,50 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         adminTapCount++;
         android.util.Log.d("ADMIN_EASTER_EGG", "Admin tap count: " + adminTapCount);
         
-        // Check if we've reached the magic number
+        // Check if we've reached magic number
         if (adminTapCount >= ADMIN_TAP_COUNT) {
             adminTapCount = 0;
             adminFirstTapTime = 0;
-            launchAdminActivity();
+            showAdminPasswordDialog();
         } else if (adminTapCount > ADMIN_TAP_COUNT - 3) {
             // Give visual feedback when getting close
             showToast("Admin access: " + adminTapCount + "/" + ADMIN_TAP_COUNT);
         }
     }
     
+    // Show password dialog for admin access
+    private void showAdminPasswordDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
+        builder.setTitle("🔐 Accès Admin");
+        
+        // Create an input field
+        final android.widget.EditText input = new android.widget.EditText(requireContext());
+        input.setHint("Entrez le mot de passe");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+        
+        // Set up the buttons
+        builder.setPositiveButton("Valider", (dialog, which) -> {
+            String password = input.getText().toString().trim();
+            if (password.equals("toto")) {
+                showToast("🔓 Admin access granted!");
+                launchAdminActivity();
+            } else {
+                showToast("❌ Mot de passe incorrect!");
+            }
+        });
+        
+        builder.setNegativeButton("Annuler", (dialog, which) -> {
+            dialog.cancel();
+        });
+        
+        builder.show();
+    }
+    
     // Launch admin activity
     private void launchAdminActivity() {
         try {
             android.util.Log.d("ADMIN_EASTER_EGG", "Launching admin activity");
-            showToast("🔓 Admin access granted!");
             
             // Remove any pending tap reset
             adminTapHandler.removeCallbacksAndMessages(null);
