@@ -36,6 +36,9 @@ import com.example.vibing.models.Poi;
 import com.example.vibing.models.QuizQuestion;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
+import com.example.vibing.ui.camera.CameraCaptureFragment;
+
+import androidx.fragment.app.FragmentResultListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -81,6 +84,23 @@ public class PoiScoreFragment extends Fragment {
         
         // Enable back button in toolbar
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        
+        // Listen for camera capture results
+        getParentFragmentManager().setFragmentResultListener("cameraResult", this, new FragmentResultListener() {
+            @Override
+            public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
+                if (result.getBoolean("quizShouldStart", false)) {
+                    // Show success message first
+                    Toast.makeText(getContext(), "Zone reconnue! Lancement du quiz...", Toast.LENGTH_SHORT).show();
+                    
+                    // Start quiz after a short delay
+                    new android.os.Handler().postDelayed(() -> {
+                        showLoadingDialog();
+                        showQuizDialog();
+                    }, 1000);
+                }
+            }
+        });
         
         // Initialize team names cache from Firebase
         initializeTeamNamesCache();
@@ -223,10 +243,9 @@ if (command.contains("je dépose les armes")) {
                 navController.navigateUp(); // Retour à la page principale pour recharger la carte
             }, 2000); // 2 secondes de délai
         } else if (command.contains("je capture la zone")) {
-            Log.i("PoiScoreFragment", "Command: je capture la zone - calling showQuizDialog()");
+            Log.i("PoiScoreFragment", "Command: je capture la zone - starting with photo recognition");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
-            showLoadingDialog();
-            showQuizDialog();
+            navigateToCameraCapture();
         } else {
             Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
             Toast.makeText(getContext(), "Commande non reconnue: " + command, Toast.LENGTH_LONG).show();
@@ -540,6 +559,26 @@ if (command.contains("je dépose les armes")) {
             handleVoiceCommand(command.toLowerCase());
         });
         builder.show();
+    }
+    
+    private void navigateToCameraCapture() {
+        try {
+            // Create camera capture fragment with POI data
+            CameraCaptureFragment cameraFragment = CameraCaptureFragment.newInstance(poiName, poiId);
+            
+            // Navigate to camera fragment
+            NavController navController = Navigation.findNavController(requireView());
+            navController.navigate(R.id.action_poiScoreFragment_to_cameraCaptureFragment, 
+                    cameraFragment.getArguments());
+            
+            Log.i("PoiScoreFragment", "Navigating to camera capture for POI: " + poiName);
+        } catch (Exception e) {
+            Log.e("PoiScoreFragment", "Error navigating to camera capture", e);
+            Toast.makeText(getContext(), "Erreur lors de l'ouverture de la caméra", Toast.LENGTH_SHORT).show();
+            // Fallback to quiz if camera fails
+            showLoadingDialog();
+            showQuizDialog();
+        }
     }
     
     private void recordPoiVisit() {
