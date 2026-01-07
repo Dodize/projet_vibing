@@ -51,6 +51,7 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Marker.OnMarkerClickListener;
 import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.infowindow.InfoWindow;
+import android.view.MotionEvent;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
@@ -58,9 +59,14 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.Map;
+import android.os.Handler;
+import android.os.Looper;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import android.content.Intent;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -89,6 +95,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     // Variables pour le suivi des zones
     private List<String> previouslyEnteredPoiNames = new ArrayList<>();
     private boolean hasShownPopupForCurrentLocation = false;
+    
+    // Easter egg: Admin access with 7 taps
+    private static final int ADMIN_TAP_COUNT = 7;
+    private static final long ADMIN_TAP_TIMEOUT_MS = 3000; // 3 seconds
+    private int adminTapCount = 0;
+    private long adminFirstTapTime = 0;
+    private Handler adminTapHandler;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -604,7 +617,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Initialize Location Client
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
         
-        // Initialize Location Callback
+        // Initialize admin tap handler
+        adminTapHandler = new Handler(Looper.getMainLooper());
+        
+// Initialize Location Callback
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
@@ -617,25 +633,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 if (location != null) {
                     GeoPoint realLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
                     currentUserLocation = realLocation;
-                    mapView.getController().setCenter(realLocation);
-                    mapView.getController().setZoom(15.0);
-
-                    if (userMarker != null) {
-                        userMarker.setPosition(realLocation);
-                        userMarker.setTitle("Vous êtes ici");
-                        userMarker.setVisible(true);
-                    }
+                    updatePoiDistancesAndList();
                 }
-                
-                // Update POI distances when location changes
-                updatePoiDistancesAndList();
-                
-                // Check for newly entered POI zones and show popup
-                checkForNewlyEnteredPoiZones();
-                
-                mapView.invalidate();
             }
         };
+        
+        // Set up easter egg on username text view
+        setupAdminEasterEgg();
 
         // Initialize User Marker (will be positioned on first location update)
         userMarker = new Marker(mapView);
@@ -1269,6 +1273,68 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             visitedPois = new ArrayList<>();
             visitedPoisLoaded = true;
             android.util.Log.e("POI_SYNC_DEBUG", "Exception loading visited POIs, using empty list", e);
+        }
+    }
+    
+    // Easter egg: Handle admin tap detection
+    private void handleAdminTap(MotionEvent e) {
+        long currentTime = System.currentTimeMillis();
+        
+        // Reset if this is the first tap or timeout occurred
+        if (adminTapCount == 0) {
+            adminFirstTapTime = currentTime;
+        } else if (currentTime - adminFirstTapTime > ADMIN_TAP_TIMEOUT_MS) {
+            adminTapCount = 0;
+            adminFirstTapTime = currentTime;
+        }
+        
+        adminTapCount++;
+        android.util.Log.d("ADMIN_EASTER_EGG", "Admin tap count: " + adminTapCount);
+        
+        // Check if we've reached the magic number
+        if (adminTapCount >= ADMIN_TAP_COUNT) {
+            adminTapCount = 0;
+            adminFirstTapTime = 0;
+            launchAdminActivity();
+        } else if (adminTapCount > ADMIN_TAP_COUNT - 3) {
+            // Give visual feedback when getting close
+            showToast("Admin access: " + adminTapCount + "/" + ADMIN_TAP_COUNT);
+        }
+    }
+    
+    // Launch admin activity
+    private void launchAdminActivity() {
+        try {
+            android.util.Log.d("ADMIN_EASTER_EGG", "Launching admin activity");
+            showToast("🔓 Admin access granted!");
+            
+            // Remove any pending tap reset
+            adminTapHandler.removeCallbacksAndMessages(null);
+            
+            // Launch admin activity
+            Intent intent = new Intent(requireContext(), com.example.vibing.activities.PoiAdminActivity.class);
+            startActivity(intent);
+            
+        } catch (Exception e) {
+            android.util.Log.e("ADMIN_EASTER_EGG", "Error launching admin activity", e);
+            showToast("Error accessing admin panel");
+        }
+    }
+    
+    // Helper method to show toast
+    private void showToast(String message) {
+        android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show();
+    }
+    
+    // Setup easter egg on username text view
+    private void setupAdminEasterEgg() {
+        TextView usernameTextView = binding.usernameTextView;
+        if (usernameTextView != null) {
+            usernameTextView.setOnClickListener(v -> {
+                MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0, 0, 0);
+                handleAdminTap(event);
+                event.recycle();
+            });
         }
     }
     
