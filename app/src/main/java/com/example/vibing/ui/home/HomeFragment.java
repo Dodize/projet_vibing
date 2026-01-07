@@ -539,7 +539,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // 4. Initialize POIs from Firebase
         initializePOIsFromFirebase();
         
-        // 5. Check Permissions and Start Location Logic
+        // 5. Initialize Pedometer (after layout is ready)
+        initializePedometer();
+        
+        // 6. Check Permissions and Start Location Logic
         checkLocationPermissions();
         
         // Center map on user location if available, otherwise Toulouse as fallback
@@ -943,10 +946,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             moneyTextView.setText("Argent: " + money + "€");
         }
         
-        if (walkingTextView != null) {
-            // Initialiser le podomètre
-            initializePedometer();
-        }
+        // Le podomètre sera initialisé après la création complète de la vue
     }
     
     private void loadUserMoneyFromFirebase() {
@@ -1031,13 +1031,17 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 @Override
                 public void onSensorChanged(SensorEvent event) {
                     if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+                        android.util.Log.d("HomeFragment", "STEP_COUNTER event received: " + event.values[0]);
+                        
                         // La première lecture définit notre point de départ
                         if (initialSteps == -1) {
                             initialSteps = (int) event.values[0];
                             currentSteps = 0;
+                            android.util.Log.d("HomeFragment", "Initial steps set to: " + initialSteps);
                         } else {
                             // Calculer les pas depuis le démarrage de l'application
                             currentSteps = (int) event.values[0] - initialSteps;
+                            android.util.Log.d("HomeFragment", "Current steps calculated: " + currentSteps);
                         }
                         
                         // Update total steps and calculate money
@@ -1046,7 +1050,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 }
                 
                 @Override
-                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {
+                    android.util.Log.d("HomeFragment", "Step sensor accuracy changed: " + accuracy);
+                }
             };
             
             sensorManager.registerListener(stepListener, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
@@ -1080,6 +1086,19 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             android.util.Log.w("HomeFragment", "Aucun capteur de pas disponible sur cet appareil");
             updateWalkingDisplay();
         }
+        
+        // Forcer l'affichage initial après l'initialisation
+        updateWalkingDisplay();
+        
+        // Forcer une petite pause puis réenregistrer le capteur pour s'assurer qu'il fonctionne
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (sensorManager != null && stepListener != null && stepCounterSensor != null) {
+                android.util.Log.d("HomeFragment", "Re-registering step counter sensor to ensure it works");
+                sensorManager.unregisterListener(stepListener);
+                boolean registered = sensorManager.registerListener(stepListener, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
+                android.util.Log.d("HomeFragment", "Step sensor re-registered: " + registered);
+            }
+        }, 2000); // 2 secondes de délai
     }
     
     private void updateWalkingDisplay() {
