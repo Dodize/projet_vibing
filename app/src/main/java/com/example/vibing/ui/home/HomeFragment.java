@@ -50,6 +50,11 @@ import org.osmdroid.views.overlay.infowindow.InfoWindow;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
 
@@ -80,6 +85,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private Marker currentSelectedMarker;
     private HomeViewModel homeViewModel;
     private List<Map<String, String>> visitedPois;
+    private SensorManager sensorManager;
+    private Sensor stepCounterSensor;
+    private Sensor stepDetectorSensor;
+    private SensorEventListener stepListener;
+    private int initialSteps;
+    private int currentSteps;
+    private boolean isStepCounterAvailable;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -703,6 +715,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Stop location updates to save battery
         stopLocationUpdates();
         
+        // Arrêter le podomètre
+        stopPedometer();
+        
         // Clean up info bubble
         if (currentInfoBubble != null && currentInfoBubble.getParent() != null) {
             ((ViewGroup) currentInfoBubble.getParent()).removeView(currentInfoBubble);
@@ -909,6 +924,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
         TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
         
         if (usernameTextView != null) {
             usernameTextView.setText(username);
@@ -920,6 +936,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+        
+        if (walkingTextView != null) {
+            // Initialiser le podomètre
+            initializePedometer();
         }
     }
     
@@ -964,6 +985,88 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void initializePedometer() {
+        sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
+        
+        // Essayer d'abord le capteur STEP_COUNTER (compteur de pas total depuis le redémarrage)
+        stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        
+        // Si non disponible, essayer STEP_DETECTOR (détecte chaque pas individuellement)
+        if (stepCounterSensor == null) {
+            stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+        }
+        
+        if (stepCounterSensor != null) {
+            // Utiliser STEP_COUNTER
+            isStepCounterAvailable = true;
+            initialSteps = -1; // Sera défini lors de la première lecture
+            currentSteps = 0;
+            
+            stepListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+                        // La première lecture définit notre point de départ
+                        if (initialSteps == -1) {
+                            initialSteps = (int) event.values[0];
+                            currentSteps = 0;
+                        } else {
+                            // Calculer les pas depuis le démarrage de l'application
+                            currentSteps = (int) event.values[0] - initialSteps;
+                        }
+                        updateWalkingDisplay();
+                    }
+                }
+                
+                @Override
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+            };
+            
+            sensorManager.registerListener(stepListener, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
+            android.util.Log.d("HomeFragment", "Podomètre STEP_COUNTER initialisé");
+            
+        } else if (stepDetectorSensor != null) {
+            // Utiliser STEP_DETECTOR
+            isStepCounterAvailable = false;
+            currentSteps = 0;
+            
+            stepListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+                        currentSteps++;
+                        updateWalkingDisplay();
+                    }
+                }
+                
+                @Override
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+            };
+            
+            sensorManager.registerListener(stepListener, stepDetectorSensor, SensorManager.SENSOR_DELAY_UI);
+            android.util.Log.d("HomeFragment", "Podomètre STEP_DETECTOR initialisé");
+            
+        } else {
+            // Aucun capteur disponible
+            android.util.Log.w("HomeFragment", "Aucun capteur de pas disponible sur cet appareil");
+            updateWalkingDisplay();
+        }
+    }
+    
+    private void updateWalkingDisplay() {
+        TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
+        if (walkingTextView != null) {
+            walkingTextView.setText("Marche: " + currentSteps + "/10");
+        }
+    }
+    
+    private void stopPedometer() {
+        if (sensorManager != null && stepListener != null) {
+            sensorManager.unregisterListener(stepListener);
+            android.util.Log.d("HomeFragment", "Podomètre arrêté");
         }
     }
     

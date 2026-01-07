@@ -43,6 +43,14 @@
             android:textColor="@android:color/white"
             android:textSize="14sp" />
 
+        <TextView
+            android:id="@+id/walking_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+
     </LinearLayout>
 
     <org.osmdroid.views.MapView
