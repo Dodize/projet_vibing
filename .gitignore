@@ -33,3 +33,4 @@ node_modules/*
 gradle/wrapper/gradle-wrapper.jar
 gradle/*
 firebase/vibingn7-882705adcdad.json
+local.properties
