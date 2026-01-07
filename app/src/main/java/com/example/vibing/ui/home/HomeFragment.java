@@ -1085,11 +1085,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private void updateWalkingDisplay() {
         TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
         if (walkingTextView != null) {
-            int stepsToNextEuro = STEPS_PER_EURO - (currentSteps % STEPS_PER_EURO);
-            if (stepsToNextEuro == STEPS_PER_EURO) {
-                stepsToNextEuro = 0;
-            }
-            walkingTextView.setText("Marche: " + currentSteps + "/20 (+" + stepsToNextEuro + ")");
+            int currentModulo = currentSteps % STEPS_PER_EURO;
+            int cyclesCompleted = currentSteps / STEPS_PER_EURO;
+            walkingTextView.setText("Marche: " + currentModulo + "/20 (" + cyclesCompleted + ")");
         }
     }
     
