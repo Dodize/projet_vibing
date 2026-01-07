@@ -93,6 +93,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private int currentSteps;
     private boolean isStepCounterAvailable;
     
+    // Step tracking for money calculation
+    private int totalStepsSinceStart;
+    private int lastMoneyStepCount;
+    private static final int STEPS_PER_EURO = 20;
+    
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
         if (location == null) return false;
@@ -958,10 +963,22 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             Integer money = documentSnapshot.getLong("money") != null ? 
                                 documentSnapshot.getLong("money").intValue() : 0;
                             
-                            // Update local SharedPreferences with Firebase value
+                            // Load step tracking data
+                            Integer totalSteps = documentSnapshot.getLong("totalSteps") != null ? 
+                                documentSnapshot.getLong("totalSteps").intValue() : 0;
+                            Integer moneySteps = documentSnapshot.getLong("moneySteps") != null ? 
+                                documentSnapshot.getLong("moneySteps").intValue() : 0;
+                            
+                            // Update local SharedPreferences with Firebase values
                             SharedPreferences.Editor editor = prefs.edit();
                             editor.putInt("money", money);
+                            editor.putInt("totalSteps", totalSteps);
+                            editor.putInt("moneySteps", moneySteps);
                             editor.apply();
+                            
+                            // Initialize step tracking
+                            totalStepsSinceStart = totalSteps;
+                            lastMoneyStepCount = moneySteps;
                             
                             // Update UI
                             updateMoneyDisplay(money);
@@ -991,6 +1008,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private void initializePedometer() {
         sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
         
+        // Load step tracking data from SharedPreferences
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        totalStepsSinceStart = prefs.getInt("totalSteps", 0);
+        lastMoneyStepCount = prefs.getInt("moneySteps", 0);
+        
         // Essayer d'abord le capteur STEP_COUNTER (compteur de pas total depuis le redémarrage)
         stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
         
@@ -1017,7 +1039,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             // Calculer les pas depuis le démarrage de l'application
                             currentSteps = (int) event.values[0] - initialSteps;
                         }
-                        updateWalkingDisplay();
+                        
+                        // Update total steps and calculate money
+                        updateStepsAndMoney();
                     }
                 }
                 
@@ -1038,7 +1062,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 public void onSensorChanged(SensorEvent event) {
                     if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
                         currentSteps++;
-                        updateWalkingDisplay();
+                        
+                        // Update total steps and calculate money
+                        updateStepsAndMoney();
                     }
                 }
                 
@@ -1059,7 +1085,57 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private void updateWalkingDisplay() {
         TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
         if (walkingTextView != null) {
-            walkingTextView.setText("Marche: " + currentSteps + "/10");
+            int stepsToNextEuro = STEPS_PER_EURO - (currentSteps % STEPS_PER_EURO);
+            if (stepsToNextEuro == STEPS_PER_EURO) {
+                stepsToNextEuro = 0;
+            }
+            walkingTextView.setText("Marche: " + currentSteps + "/20 (+" + stepsToNextEuro + ")");
+        }
+    }
+    
+    private void updateStepsAndMoney() {
+        // Update display
+        updateWalkingDisplay();
+        
+        // Calculate new total steps
+        int newTotalSteps = totalStepsSinceStart + currentSteps;
+        
+        // Calculate how many euros we've earned from new steps
+        int stepsSinceLastMoney = newTotalSteps - lastMoneyStepCount;
+        int eurosEarned = stepsSinceLastMoney / STEPS_PER_EURO;
+        
+        if (eurosEarned > 0) {
+            // Update money step count
+            lastMoneyStepCount += eurosEarned * STEPS_PER_EURO;
+            
+            // Update user money
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            int currentMoney = prefs.getInt("money", 0);
+            int newMoney = currentMoney + eurosEarned;
+            
+            // Update UI immediately
+            updateMoneyDisplay(newMoney);
+            
+            // Save to SharedPreferences
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("money", newMoney);
+            editor.putInt("totalSteps", newTotalSteps);
+            editor.putInt("moneySteps", lastMoneyStepCount);
+            editor.apply();
+            
+            // Save to Firebase
+            saveStepsAndMoneyToFirebase(newMoney, newTotalSteps, lastMoneyStepCount);
+            
+            android.util.Log.d("HomeFragment", "Steps updated! Earned " + eurosEarned + "€ from " + stepsSinceLastMoney + " steps");
+        } else {
+            // Just save the total steps
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("totalSteps", newTotalSteps);
+            editor.apply();
+            
+            // Save total steps to Firebase
+            saveStepsToFirebase(newTotalSteps);
         }
     }
     
@@ -1067,6 +1143,65 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         if (sensorManager != null && stepListener != null) {
             sensorManager.unregisterListener(stepListener);
             android.util.Log.d("HomeFragment", "Podomètre arrêté");
+        }
+    }
+    
+    private void saveStepsAndMoneyToFirebase(int money, int totalSteps, int moneySteps) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                // Create updates map for batch update
+                java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                updates.put("money", money);
+                updates.put("totalSteps", totalSteps);
+                updates.put("moneySteps", moneySteps);
+                updates.put("lastStepUpdate", new java.util.Date());
+                
+                db.collection("users").document(userId)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved steps and money to Firebase");
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving steps and money to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save steps and money to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving steps and money to Firebase", e);
+        }
+    }
+    
+    private void saveStepsToFirebase(int totalSteps) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                updates.put("totalSteps", totalSteps);
+                updates.put("lastStepUpdate", new java.util.Date());
+                
+                db.collection("users").document(userId)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved steps to Firebase");
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving steps to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save steps to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving steps to Firebase", e);
         }
     }
     
@@ -1107,6 +1242,16 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Update UI
         updateMoneyDisplay(money);
         
+    }
+    
+    // Public method to get current steps for testing
+    public int getCurrentSteps() {
+        return currentSteps;
+    }
+    
+    // Public method to get total steps since app install
+    public int getTotalStepsSinceStart() {
+        return totalStepsSinceStart + currentSteps;
     }
     
     private void loadUserVisitedPois() {
