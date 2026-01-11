@@ -1,6 +1,7 @@
 package com.example.vibing.models;
 
 import java.util.Map;
+import java.util.List;
 
 public class Poi {
     private String name;
@@ -17,6 +18,7 @@ public class Poi {
     private String ownerTeamId;
     private java.util.Date captureTime;
     private java.util.Date lastUpdated;
+    private List<String> keywords;
     
     // Raw data map for manual extraction
     private Map<String, Object> rawData;
@@ -260,5 +262,20 @@ public class Poi {
     
     public void setOwnerTeamId(String ownerTeamId) {
         this.ownerTeamId = ownerTeamId;
+    }
+    
+    public List<String> getKeywords() {
+        // Try raw data map first for keywords
+        if (rawData != null && rawData.containsKey("keywords")) {
+            Object keywordsObj = rawData.get("keywords");
+            if (keywordsObj instanceof List) {
+                return (List<String>) keywordsObj;
+            }
+        }
+        return keywords;
+    }
+    
+    public void setKeywords(List<String> keywords) {
+        this.keywords = keywords;
     }
 }

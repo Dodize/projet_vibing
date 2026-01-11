@@ -37,6 +37,13 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.MaterialComponents.Light.NoActionBar" />
             
+        <!-- POI Administration Activity -->
+        <activity
+            android:name=".activities.PoiAdminActivity"
+            android:exported="false"
+            android:label="Administration des POI"
+            android:parentActivityName=".MainActivity" />
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
