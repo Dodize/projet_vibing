@@ -165,12 +165,12 @@ private void loadTeams() {
             return;
         }
         
-        if (selectedTeam == null) {
+if (selectedTeam == null) {
             Toast.makeText(this, "Veuillez sélectionner une équipe", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        saveUserToDatabase(username, selectedTeam);
+        checkUsernameExists(username, selectedTeam);
     }
     
     private void updateContinueButtonState() {
@@ -185,6 +185,28 @@ private void loadTeams() {
             continueButton.setAlpha(0.3f);
             continueButton.setBackgroundColor(getResources().getColor(android.R.color.darker_gray, null));
         }
+}
+
+    private void checkUsernameExists(String username, Team team) {
+        progressBar.setVisibility(View.VISIBLE);
+        
+        db.collection("users")
+                .whereEqualTo("username", username)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        // Le nom d'utilisateur existe déjà
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(this, "Ce nom d'utilisateur est déjà pris", Toast.LENGTH_LONG).show();
+                    } else {
+                        // Le nom d'utilisateur est disponible, procéder à l'inscription
+                        saveUserToDatabase(username, team);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(this, "Erreur lors de la vérification du nom: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
     private void saveUserToDatabase(String username, Team team) {

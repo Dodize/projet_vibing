@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,6 +36,9 @@ import com.example.vibing.models.Poi;
 import com.example.vibing.models.QuizQuestion;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
+import com.example.vibing.ui.camera.CameraCaptureFragment;
+
+import androidx.fragment.app.FragmentResultListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -82,6 +84,23 @@ public class PoiScoreFragment extends Fragment {
         
         // Enable back button in toolbar
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        
+        // Listen for camera capture results
+        getParentFragmentManager().setFragmentResultListener("cameraResult", this, new FragmentResultListener() {
+            @Override
+            public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
+                if (result.getBoolean("quizShouldStart", false)) {
+                    // Show success message first
+                    Toast.makeText(getContext(), "Zone reconnue! Lancement du quiz...", Toast.LENGTH_SHORT).show();
+                    
+                    // Start quiz after a short delay
+                    new android.os.Handler().postDelayed(() -> {
+                        showLoadingDialog();
+                        showQuizDialog();
+                    }, 1000);
+                }
+            }
+        });
         
         // Initialize team names cache from Firebase
         initializeTeamNamesCache();
@@ -224,10 +243,9 @@ if (command.contains("je dépose les armes")) {
                 navController.navigateUp(); // Retour à la page principale pour recharger la carte
             }, 2000); // 2 secondes de délai
         } else if (command.contains("je capture la zone")) {
-            Log.i("PoiScoreFragment", "Command: je capture la zone - calling showQuizDialog()");
+            Log.i("PoiScoreFragment", "Command: je capture la zone - starting with photo recognition");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
-            showLoadingDialog();
-            showQuizDialog();
+            navigateToCameraCapture();
         } else {
             Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
             Toast.makeText(getContext(), "Commande non reconnue: " + command, Toast.LENGTH_LONG).show();
@@ -543,6 +561,26 @@ if (command.contains("je dépose les armes")) {
         builder.show();
     }
     
+    private void navigateToCameraCapture() {
+        try {
+            // Create camera capture fragment with POI data
+            CameraCaptureFragment cameraFragment = CameraCaptureFragment.newInstance(poiName, poiId);
+            
+            // Navigate to camera fragment
+            NavController navController = Navigation.findNavController(requireView());
+            navController.navigate(R.id.action_poiScoreFragment_to_cameraCaptureFragment, 
+                    cameraFragment.getArguments());
+            
+            Log.i("PoiScoreFragment", "Navigating to camera capture for POI: " + poiName);
+        } catch (Exception e) {
+            Log.e("PoiScoreFragment", "Error navigating to camera capture", e);
+            Toast.makeText(getContext(), "Erreur lors de l'ouverture de la caméra", Toast.LENGTH_SHORT).show();
+            // Fallback to quiz if camera fails
+            showLoadingDialog();
+            showQuizDialog();
+        }
+    }
+    
     private void recordPoiVisit() {
         try {
             // Get user ID from SharedPreferences
@@ -610,30 +648,26 @@ if (command.contains("je dépose les armes")) {
     }
 
     private String getTeamDisplayText(String teamId) {
+        android.util.Log.d("TEAM_COLOR_DEBUG", "getTeamDisplayText() called with teamId: " + teamId);
         try {
             if (teamId == null || teamId.isEmpty()) {
+                android.util.Log.d("TEAM_COLOR_DEBUG", "TeamId is null or empty, returning Zone neutre");
                 return "Zone neutre";
             }
             
             // Get team name from cache or load from Firebase
             String teamName = getTeamNameFromCache(teamId);
-            String emoji = getTeamEmoji(teamId);
-            return "Équipe: " + teamName + " " + emoji;
+            String result = "Équipe: " + teamName;
+            android.util.Log.d("TEAM_COLOR_DEBUG", "getTeamDisplayText result: " + result);
+            return result;
         } catch (Exception e) {
             android.util.Log.e("POI_SCORE", "Error in getTeamDisplayText: " + e.getMessage());
             return "Zone neutre";
         }
     }
     
-    private String getTeamEmoji(String teamId) {
-        switch (teamId) {
-            case "team_1": return "🔴"; // Les Conquérants (Rouge)
-            case "team_2": return "🔵"; // Les Explorateurs (Bleu)
-            case "team_3": return "🟢"; // Les Stratèges (Vert)
-            case "team_4": return "🟡"; // Les Gardiens (Jaune)
-            default: return "⚪"; // Neutre
-        }
-    }
+
+
     
     
     
@@ -669,6 +703,7 @@ if (command.contains("je dépose les armes")) {
         String displayText = poiName != null ? poiName : "Zone inconnue";
         // Use the string team for display
         String displayTeam = (team != null && team > 0) ? ("team_" + team) : (poiOwningTeam != null ? poiOwningTeam : null);
+        android.util.Log.d("TEAM_COLOR_DEBUG", "About to call getTeamDisplayText with team: " + displayTeam);
         displayText += "\n" + getTeamDisplayText(displayTeam);
         displayText += "\nScore de la zone: " + (score != null ? score : 0);
         
@@ -705,15 +740,26 @@ if (command.contains("je dépose les armes")) {
         teamNamesCache.put(3, "Les Stratèges");
         teamNamesCache.put(4, "Les Gardiens");
         
-        // Load real team names from Firebase and update cache
+
+        
+        // Load real team names and colors from Firebase and update cache
         try {
             FirebaseFirestore db = FirebaseFirestore.getInstance();
+            android.util.Log.d("TEAM_DEBUG", "Creating Firebase query for 'teams' collection");
+            
             db.collection("teams")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         String teamId = document.getId();
+                        android.util.Log.d("TEAM_DEBUG", "Processing team document: " + teamId);
+                        android.util.Log.d("TEAM_DEBUG", "Team document data: " + document.getData());
+                        
                         String teamName = document.getString("name");
+                        String teamColor = document.getString("color");
+                        String teamColorHex = document.getString("colorHex");
+                        
+                        android.util.Log.d("TEAM_DEBUG", "Extracted fields - name: " + teamName + ", color: " + teamColor + ", colorHex: " + teamColorHex);
                         
                         // Extract team number from "team_X" format
                         if (teamId.startsWith("team_")) {
@@ -725,17 +771,29 @@ if (command.contains("je dépose les armes")) {
                                     // Refresh display if already showing
                                     updateDisplayText(null, null);
                                 }
+
                             } catch (NumberFormatException e) {
                                 android.util.Log.e("TEAM_DEBUG", "Error parsing team ID: " + teamId, e);
                             }
+                        } else {
+                            android.util.Log.w("TEAM_DEBUG", "Team ID doesn't start with 'team_': " + teamId);
                         }
+                    }
+                    
+                    android.util.Log.d("TEAM_DEBUG", "Team names cache: " + teamNamesCache.toString());
+                    
+                    // Force refresh display if already showing
+                    if (getContext() != null) {
+                        android.util.Log.d("TEAM_DEBUG", "About to call updateDisplayText from Firebase success");
+                        updateDisplayText(null, null);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    android.util.Log.e("TEAM_DEBUG", "Error loading teams from Firebase", e);
+                    android.util.Log.e("TEAM_DEBUG", "ERROR loading teams from Firebase: " + e.getMessage());
+                    android.util.Log.e("TEAM_DEBUG", "Firebase query failed");
                 });
         } catch (Exception e) {
-            android.util.Log.e("TEAM_DEBUG", "Exception initializing team names cache", e);
+
         }
     }
     
@@ -755,7 +813,7 @@ private String getTeamNameFromCache(String teamId) {
             return teamName;
         }
         
-// If not in cache, return default based on teamId
+        // If not in cache, return default based on teamId
         switch (teamId) {
             case "team_1": return "Les Conquérants";
             case "team_2": return "Les Explorateurs";

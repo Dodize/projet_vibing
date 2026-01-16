@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/poi_name_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nom du POI"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mots-clés (séparés par des virgules) :"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/keywords_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="building, architecture, monument"
+        android:inputType="text"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Exemples : building, architecture, monument, historic, culture"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:layout_marginBottom="8dp" />
+
+</LinearLayout>

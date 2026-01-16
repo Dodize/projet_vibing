@@ -5,17 +5,20 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.app.AlertDialog;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -33,6 +36,7 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -47,6 +51,7 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Marker.OnMarkerClickListener;
 import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.infowindow.InfoWindow;
+import android.view.MotionEvent;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import android.os.Handler;
 import android.os.Looper;
@@ -61,9 +66,14 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.Map;
+import android.os.Handler;
+import android.os.Looper;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import android.content.Intent;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -97,6 +107,21 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private int totalStepsSinceStart;
     private int lastMoneyStepCount;
     private static final int STEPS_PER_EURO = 20;
+    
+    // Cache for team colors loaded from Firebase
+    private Map<Integer, Integer> teamColorsCache = new HashMap<>();
+    private Map<Integer, Integer> teamBrightColorsCache = new HashMap<>();
+    
+    // Variables pour le suivi des zones
+    private List<String> previouslyEnteredPoiNames = new ArrayList<>();
+    private boolean hasShownPopupForCurrentLocation = false;
+    
+    // Easter egg: Admin access with 7 taps
+    private static final int ADMIN_TAP_COUNT = 7;
+    private static final long ADMIN_TAP_TIMEOUT_MS = 3000; // 3 seconds
+    private int adminTapCount = 0;
+    private long adminFirstTapTime = 0;
+    private Handler adminTapHandler;
     
     // Method to detect if location is the emulator default (Mountain View, CA)
     private boolean isEmulatorDefaultLocation(GeoPoint location) {
@@ -174,15 +199,18 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             holder.poiDistanceTextView.setText(distanceText);
             
             // Check if POI was visited today and update appearance
+            android.util.Log.d("POI_VISIT_DEBUG", "LIST Checking POI: " + poi.name + " (ID: " + poi.id + ")");
             boolean isVisitedToday = isPoiVisitedToday(poi.id);
+            android.util.Log.d("POI_VISIT_DEBUG", "LIST Result for " + poi.name + ": visitedToday=" + isVisitedToday);
             
             if (isVisitedToday) {
                 holder.poiNameTextView.setTextColor(0xFF808080); // Gray text
                 holder.poiDistanceTextView.setTextColor(0xFF808080); // Gray text
                 holder.itemView.setAlpha(0.6f); // Semi-transparent
             } else {
-                holder.poiNameTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
-                holder.poiDistanceTextView.setTextColor(0xFFFFFFFF); // White text for all non-visited POIs
+                // Use proper theme colors for better visibility
+                holder.poiNameTextView.setTextColor(getResources().getColor(R.color.text_dark, null));
+                holder.poiDistanceTextView.setTextColor(getResources().getColor(R.color.text_secondary, null));
                 holder.itemView.setAlpha(1.0f); // Fully opaque
             }
             
@@ -224,8 +252,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             }
         }
     }
-    // --- End Simple POI Adapter ---
+     // --- End Simple POI Adapter ---
 
+    // Flag to track if visited POIs have been loaded
+    private boolean visitedPoisLoaded = false;
 
     private void initializePOIsFromFirebase() {
         homeViewModel.getPois().observe(getViewLifecycleOwner(), pois -> {
@@ -255,10 +285,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                     poiMarker.setTitle(poi.name);
                     poiMarker.setSnippet("Score: " + poi.score + " | Équipe: " + getTeamName(poi.owningTeam));
                     
-                    // Check if user is in zone and if POI was visited today
+                    // Check if user is in zone (don't gray out visited POIs on map)
                     boolean isInZone = isUserInPoiZone(poi);
-                    boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                    poiMarker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
                     
                     poiMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
                     poiMarker.setOnMarkerClickListener(this);
@@ -283,8 +312,57 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 
                 // Force map refresh
                 mapView.invalidate();
+                
+                // Check for POI zones after POIs are loaded, but only if visited POIs are loaded
+                checkForPoiZonesWhenReady();
             }
         });
+    }
+
+    private void checkForPoiZonesWhenReady() {
+        android.util.Log.d("POI_SYNC_DEBUG", "checkForPoiZonesWhenReady called - visitedPoisLoaded: " + visitedPoisLoaded);
+        
+        if (visitedPoisLoaded) {
+            // Visited POIs are loaded, we can check for zones immediately
+            checkForNewlyEnteredPoiZones();
+        } else {
+            // Visited POIs not loaded yet, wait and retry
+            android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs not loaded yet, waiting...");
+            
+            // Wait for visited POIs to be loaded (with timeout)
+            waitForVisitedPoisAndCheckZones();
+        }
+    }
+
+    private void waitForVisitedPoisAndCheckZones() {
+        // Check every 500ms for up to 5 seconds
+        final int maxRetries = 10;
+        final long retryDelay = 500;
+        
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final Runnable[] runnable = new Runnable[1];
+        final int[] retryCount = {0};
+        
+        runnable[0] = new Runnable() {
+            @Override
+            public void run() {
+                retryCount[0]++;
+                android.util.Log.d("POI_SYNC_DEBUG", "Checking visited POIs status, attempt " + retryCount[0] + "/10");
+                
+                if (visitedPoisLoaded || visitedPois != null) {
+                    android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs now loaded, checking zones");
+                    checkForNewlyEnteredPoiZones();
+                } else if (retryCount[0] < maxRetries) {
+                    android.util.Log.d("POI_SYNC_DEBUG", "Still waiting for visited POIs, retrying in 500ms");
+                    handler.postDelayed(this, retryDelay);
+                } else {
+                    android.util.Log.w("POI_SYNC_DEBUG", "Timeout waiting for visited POIs, proceeding anyway");
+                    checkForNewlyEnteredPoiZones();
+                }
+            }
+        };
+        
+        handler.postDelayed(runnable[0], retryDelay);
     }
     
     private String getTeamName(int teamId) {
@@ -299,16 +377,87 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
     }
     
-    private int getTeamColor(int teamId) {
-        switch (teamId) {
-            case 0: return 0xFF808080; // Gray for neutral
-            case 1: return 0xFFFF0000; // Red
-            case 2: return 0xFF0000FF; // Blue
-            case 3: return 0xFF00FF00; // Green
-            case 4: return 0xFFFFFF00; // Yellow
-
-            default: return 0xFF808080; // Gray
+    private void initializeTeamColorsCache() {
+        // Initialize with default values
+        teamColorsCache.put(0, 0xFF808080); // Gray for neutral
+        teamColorsCache.put(1, 0xFFFF0000); // Red
+        teamColorsCache.put(2, 0xFF0000FF); // Blue
+        teamColorsCache.put(3, 0xFF00FF00); // Green
+        teamColorsCache.put(4, 0xFFFFFF00); // Yellow
+        teamColorsCache.put(5, 0xFF800080); // Purple
+        
+        teamBrightColorsCache.put(0, 0xFFB0B0B0); // Brighter gray for neutral
+        teamBrightColorsCache.put(1, 0xFFFF4444); // Brighter red
+        teamBrightColorsCache.put(2, 0xFF4444FF); // Brighter blue
+        teamBrightColorsCache.put(3, 0xFF44FF44); // Brighter green
+        teamBrightColorsCache.put(4, 0xFFFFFF44); // Brighter yellow
+        teamBrightColorsCache.put(5, 0xFFAA44AA); // Brighter purple
+        
+        // Load real team colors from Firebase and update cache
+        try {
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            db.collection("teams")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    android.util.Log.d("TEAM_COLOR_DEBUG", "Successfully loaded team colors from Firebase");
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        String teamId = document.getId();
+                        String teamColorHex = document.getString("color");
+                        String teamColorHexField = document.getString("colorHex");
+                        
+                        // Extract team number from "team_X" format
+                        if (teamId.startsWith("team_")) {
+                            try {
+                                int teamNumber = Integer.parseInt(teamId.substring(5));
+                                
+                                // Use color if available, otherwise try colorHex
+                                String colorToUse = teamColorHex;
+                                if (colorToUse == null || colorToUse.isEmpty()) {
+                                    colorToUse = teamColorHexField;
+                                }
+                                
+                                if (colorToUse != null && !colorToUse.isEmpty()) {
+                                    int colorInt = android.graphics.Color.parseColor(colorToUse);
+                                    teamColorsCache.put(teamNumber, colorInt);
+                                    
+                                    // Generate bright version
+                                    int brightColorInt = makeColorBrighter(colorToUse);
+                                    teamBrightColorsCache.put(teamNumber, brightColorInt);
+                                    
+                                    android.util.Log.d("TEAM_COLOR_DEBUG", "Updated team color: " + teamNumber + " -> " + colorToUse);
+                                }
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("TEAM_COLOR_DEBUG", "Error parsing team ID: " + teamId, e);
+                            } catch (IllegalArgumentException e) {
+                                android.util.Log.e("TEAM_COLOR_DEBUG", "Error parsing color for team " + teamId, e);
+                            }
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("TEAM_COLOR_DEBUG", "Error loading team colors from Firebase", e);
+                });
+        } catch (Exception e) {
+            android.util.Log.e("TEAM_COLOR_DEBUG", "Exception initializing team colors cache", e);
         }
+    }
+    
+    private int makeColorBrighter(String colorHex) {
+        try {
+            int color = android.graphics.Color.parseColor(colorHex);
+            float[] hsv = new float[3];
+            android.graphics.Color.colorToHSV(color, hsv);
+            hsv[2] = Math.min(hsv[2] * 1.4f, 1.0f); // Increase brightness by 40%
+            return android.graphics.Color.HSVToColor(hsv);
+        } catch (Exception e) {
+            android.util.Log.e("TEAM_COLOR_DEBUG", "Error making color brighter: " + colorHex, e);
+            return 0xFFB0B0B0; // Default bright gray
+        }
+    }
+    
+    private int getTeamColor(int teamId) {
+        // Return color from cache, fallback to default gray if not found
+        return teamColorsCache.getOrDefault(teamId, 0xFF808080); // Gray fallback
     }
     
     private android.graphics.drawable.Drawable getTeamIcon(int teamId) {
@@ -349,15 +498,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private int getBrightTeamColor(int teamId) {
-        switch (teamId) {
-            case 0: return 0xFFB0B0B0; // Brighter gray for neutral
-            case 1: return 0xFFFF4444; // Brighter red
-            case 2: return 0xFF4444FF; // Brighter blue
-            case 3: return 0xFF44FF44; // Brighter green
-            case 4: return 0xFFFFFF44; // Brighter yellow
-            case 5: return 0xFFAA44AA; // Brighter purple
-            default: return 0xFFB0B0B0; // Brighter gray
-        }
+        // Return bright color from cache, fallback to default bright gray if not found
+        return teamBrightColorsCache.getOrDefault(teamId, 0xFFB0B0B0); // Bright gray fallback
     }
     
     private void updatePoiDistancesAndList() {
@@ -401,11 +543,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             
             poi.distance = distanceInMeters / 1000.0; // Convert to km
             
-            // Update marker icon based on zone status and visit status
+            // Update marker icon based on zone status (don't gray out visited POIs on map)
             if (poi.marker != null) {
                 boolean isInZone = isUserInPoiZone(poi);
-                boolean isVisitedToday = isPoiVisitedToday(poi.id);
-                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, isVisitedToday));
+                poi.marker.setIcon(getTeamIcon(poi.owningTeam, isInZone, false));
             }
         }
         
@@ -416,6 +557,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Create new adapter with fresh data to ensure it's properly updated
         poiListAdapter = new PoiListAdapter(new ArrayList<>(poiList));
         poiRecyclerView.setAdapter(poiListAdapter);
+        
+        // Check for POI zones whenever distances are updated
+        checkForNewlyEnteredPoiZones();
         
         mapView.invalidate();
     }
@@ -430,6 +574,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
         // Display user information from SharedPreferences
         displayUserInfo();
+        
+        // Initialize team colors cache with default values and load from Firebase
+        initializeTeamColorsCache();
 
         // 1. Initialize MapView and OSMDroid configuration
         mapView = binding.mapView;
@@ -490,7 +637,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Initialize Location Client
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
         
-        // Initialize Location Callback
+        // Initialize admin tap handler
+        adminTapHandler = new Handler(Looper.getMainLooper());
+        
+// Initialize Location Callback
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
@@ -503,21 +653,13 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                 if (location != null) {
                     GeoPoint realLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
                     currentUserLocation = realLocation;
-                    mapView.getController().setCenter(realLocation);
-                    mapView.getController().setZoom(15.0);
-
-                    if (userMarker != null) {
-                        userMarker.setPosition(realLocation);
-                        userMarker.setTitle("Vous êtes ici");
-                        userMarker.setVisible(true);
-                    }
+                    updatePoiDistancesAndList();
                 }
-                
-                // Update POI distances when location changes
-                updatePoiDistancesAndList();
-                mapView.invalidate();
             }
         };
+        
+        // Set up easter egg on username text view
+        setupAdminEasterEgg();
 
         // Initialize User Marker (will be positioned on first location update)
         userMarker = new Marker(mapView);
@@ -812,6 +954,134 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         return distanceInMeters <= poi.radius;
     }
+    
+    private void checkForNewlyEnteredPoiZones() {
+        android.util.Log.d("POPUP_DEBUG", "checkForNewlyEnteredPoiZones called");
+        android.util.Log.d("POI_SYNC_DEBUG", "visitedPois status: " + (visitedPois != null ? "loaded (" + visitedPois.size() + " items)" : "null"));
+        
+        if (poiList == null) {
+            android.util.Log.d("POPUP_DEBUG", "poiList is null");
+            return;
+        }
+        
+        if (currentUserLocation == null) {
+            android.util.Log.d("POPUP_DEBUG", "currentUserLocation is null");
+            return;
+        }
+        
+        // Additional safety check - if visited POIs are still not loaded, wait
+        if (!visitedPoisLoaded && visitedPois == null) {
+            android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs still not loaded, postponing zone check");
+            waitForVisitedPoisAndCheckZones();
+            return;
+        }
+        
+        android.util.Log.d("POPUP_DEBUG", "Checking " + poiList.size() + " POIs");
+        
+        List<PoiItem> currentlyEnteredPois = new ArrayList<>();
+        
+        // Find all POIs the user is currently in zone for
+        for (PoiItem poi : poiList) {
+            boolean inZone = isUserInPoiZone(poi);
+            if (inZone) {
+                currentlyEnteredPois.add(poi);
+            }
+        }
+        
+        android.util.Log.d("POPUP_DEBUG", "Currently in " + currentlyEnteredPois.size() + " zones");
+        android.util.Log.d("POPUP_DEBUG", "Previously in " + previouslyEnteredPoiNames.size() + " zones");
+        android.util.Log.d("POPUP_DEBUG", "hasShownPopupForCurrentLocation: " + hasShownPopupForCurrentLocation);
+        
+        // Check if this is a new entry (user wasn't in this POI zone before)
+        List<PoiItem> newlyEnteredPois = new ArrayList<>();
+        for (PoiItem currentPoi : currentlyEnteredPois) {
+            if (!previouslyEnteredPoiNames.contains(currentPoi.name)) {
+                newlyEnteredPois.add(currentPoi);
+                android.util.Log.d("POPUP_DEBUG", "Newly entered POI: " + currentPoi.name);
+            }
+        }
+        
+        // Show popup if user entered new POI zones
+        if (!newlyEnteredPois.isEmpty()) {
+            android.util.Log.d("POPUP_DEBUG", "Should show popup for " + newlyEnteredPois.size() + " POIs");
+            android.util.Log.d("POI_VISIT_DEBUG", "About to call popup with visitedPois status: " + (visitedPois != null ? "not null" : "null"));
+            showPoiQuizPopup(newlyEnteredPois);
+        }
+        
+
+        
+        // Update the previously entered POIs list
+        previouslyEnteredPoiNames.clear();
+        for (PoiItem poi : currentlyEnteredPois) {
+            previouslyEnteredPoiNames.add(poi.name);
+        }
+    }
+    
+    private void showPoiQuizPopup(List<PoiItem> newlyEnteredPois) {
+        if (newlyEnteredPois.isEmpty()) {
+            return;
+        }
+        
+        // Filter out POIs that have already been visited today
+        List<PoiItem> eligiblePois = new ArrayList<>();
+        for (PoiItem poi : newlyEnteredPois) {
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP Checking POI: " + poi.name + " (ID: " + poi.id + ")");
+            boolean visitedToday = isPoiVisitedToday(poi.id);
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP Result for " + poi.name + ": visitedToday=" + visitedToday);
+            if (!visitedToday) {
+                eligiblePois.add(poi);
+            }
+        }
+        
+        if (eligiblePois.isEmpty()) {
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP All POIs have been visited today, not showing popup");
+            return;
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        
+        if (eligiblePois.size() == 1) {
+            // Single POI entered
+            PoiItem poi = eligiblePois.get(0);
+            builder.setTitle("🎯 Zone de POI détectée!")
+                  .setMessage("Vous êtes dans la zone de " + poi.name + " !\n\nScore actuel: " + poi.score + "\nVoulez-vous lancer le quiz pour capturer ce POI ?");
+            
+            builder.setPositiveButton("Lancer le quiz", (dialog, which) -> {
+                navigateToPoiScore(poi);
+                dialog.dismiss();
+            });
+            
+        } else {
+            // Multiple POIs entered
+            StringBuilder message = new StringBuilder("Vous êtes dans la zone de plusieurs POIs !\n\n");
+            for (int i = 0; i < eligiblePois.size(); i++) {
+                PoiItem poi = eligiblePois.get(i);
+                message.append((i + 1)).append(". ").append(poi.name)
+                       .append(" (Score: ").append(poi.score).append(")\n");
+            }
+            message.append("\nQuel POI voulez-vous capturer ?");
+            
+            builder.setTitle("🎯 Plusieurs zones de POI détectées!")
+                  .setMessage(message.toString());
+            
+            // Create buttons for each POI
+            for (PoiItem poi : eligiblePois) {
+                builder.setPositiveButton(poi.name, (dialog, which) -> {
+                    navigateToPoiScore(poi);
+                    dialog.dismiss();
+                });
+            }
+        }
+        
+        builder.setNegativeButton("Plus tard", (dialog, which) -> {
+            dialog.dismiss();
+        });
+        
+        builder.setCancelable(false); // Prevent dismissal by clicking outside
+        
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
 
     private void setupInfoBubble() {
         // Create a custom info bubble that will be added to the map's parent layout
@@ -948,7 +1218,6 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         // Le podomètre sera initialisé après la création complète de la vue
     }
-    
     private void loadUserMoneyFromFirebase() {
         try {
             SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
@@ -1285,35 +1554,144 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             @SuppressWarnings("unchecked")
                             List<Map<String, String>> visited = (List<Map<String, String>>) documentSnapshot.get("visitedPois");
                             visitedPois = visited != null ? visited : new ArrayList<>();
-                            
-                            // Update POI display after loading visited POIs
-                            updatePoiDistancesAndList();
                         } else {
                             visitedPois = new ArrayList<>();
                         }
+                        
+                        // Mark visited POIs as loaded
+                        visitedPoisLoaded = true;
+                        android.util.Log.d("POI_SYNC_DEBUG", "Visited POIs loaded, count: " + visitedPois.size());
+                        
+                        // Update POI display after loading visited POIs
+                        updatePoiDistancesAndList();
                     })
                     .addOnFailureListener(e -> {
                         visitedPois = new ArrayList<>();
+                        visitedPoisLoaded = true;
+                        android.util.Log.w("POI_SYNC_DEBUG", "Failed to load visited POIs, using empty list");
                     });
             } else {
                 visitedPois = new ArrayList<>();
+                visitedPoisLoaded = true;
+                android.util.Log.d("POI_SYNC_DEBUG", "No user ID found, marking visited POIs as loaded with empty list");
             }
         } catch (Exception e) {
             visitedPois = new ArrayList<>();
+            visitedPoisLoaded = true;
+            android.util.Log.e("POI_SYNC_DEBUG", "Exception loading visited POIs, using empty list", e);
+        }
+    }
+    
+// Easter egg: Handle admin tap detection
+    private void handleAdminTap(MotionEvent e) {
+        long currentTime = System.currentTimeMillis();
+        
+        // Reset if this is first tap or timeout occurred
+        if (adminTapCount == 0) {
+            adminFirstTapTime = currentTime;
+        } else if (currentTime - adminFirstTapTime > ADMIN_TAP_TIMEOUT_MS) {
+            adminTapCount = 0;
+            adminFirstTapTime = currentTime;
+        }
+        
+        adminTapCount++;
+        android.util.Log.d("ADMIN_EASTER_EGG", "Admin tap count: " + adminTapCount);
+        
+        // Check if we've reached magic number
+        if (adminTapCount >= ADMIN_TAP_COUNT) {
+            adminTapCount = 0;
+            adminFirstTapTime = 0;
+            showAdminPasswordDialog();
+        } else if (adminTapCount > ADMIN_TAP_COUNT - 3) {
+            // Give visual feedback when getting close
+            showToast("Admin access: " + adminTapCount + "/" + ADMIN_TAP_COUNT);
+        }
+    }
+    
+    // Show password dialog for admin access
+    private void showAdminPasswordDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
+        builder.setTitle("🔐 Accès Admin");
+        
+        // Create an input field
+        final android.widget.EditText input = new android.widget.EditText(requireContext());
+        input.setHint("Entrez le mot de passe");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+        
+        // Set up the buttons
+        builder.setPositiveButton("Valider", (dialog, which) -> {
+            String password = input.getText().toString().trim();
+            if (password.equals("toto")) {
+                showToast("🔓 Admin access granted!");
+                launchAdminActivity();
+            } else {
+                showToast("❌ Mot de passe incorrect!");
+            }
+        });
+        
+        builder.setNegativeButton("Annuler", (dialog, which) -> {
+            dialog.cancel();
+        });
+        
+        builder.show();
+    }
+    
+    // Launch admin activity
+    private void launchAdminActivity() {
+        try {
+            android.util.Log.d("ADMIN_EASTER_EGG", "Launching admin activity");
+            
+            // Remove any pending tap reset
+            adminTapHandler.removeCallbacksAndMessages(null);
+            
+            // Launch admin activity
+            Intent intent = new Intent(requireContext(), com.example.vibing.activities.PoiAdminActivity.class);
+            startActivity(intent);
+            
+        } catch (Exception e) {
+            android.util.Log.e("ADMIN_EASTER_EGG", "Error launching admin activity", e);
+            showToast("Error accessing admin panel");
+        }
+    }
+    
+    // Helper method to show toast
+    private void showToast(String message) {
+        android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show();
+    }
+    
+    // Setup easter egg on username text view
+    private void setupAdminEasterEgg() {
+        TextView usernameTextView = binding.usernameTextView;
+        if (usernameTextView != null) {
+            usernameTextView.setOnClickListener(v -> {
+                MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0, 0, 0);
+                handleAdminTap(event);
+                event.recycle();
+            });
         }
     }
     
     private boolean isPoiVisitedToday(String poiId) {
-        if (visitedPois == null) return false;
+        if (visitedPois == null) {
+            android.util.Log.d("POI_VISIT_DEBUG", "visitedPois is null, returning false for " + poiId);
+            return false;
+        }
         
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         String today = dateFormat.format(new Date());
         
         for (Map<String, String> visit : visitedPois) {
-            if (poiId.equals(visit.get("poiId")) && today.equals(visit.get("visitDate"))) {
+            String visitedPoiId = visit.get("poiId");
+            String visitDate = visit.get("visitDate");
+            
+            if (poiId.equals(visitedPoiId) && today.equals(visitDate)) {
+                android.util.Log.d("POI_VISIT_DEBUG", "Found match: POI " + poiId + " visited today");
                 return true;
             }
         }
+        
+        android.util.Log.d("POI_VISIT_DEBUG", "No match found: POI " + poiId + " not visited today");
         return false;
     }
     
