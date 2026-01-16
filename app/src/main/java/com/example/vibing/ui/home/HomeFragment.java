@@ -53,6 +53,13 @@ import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.infowindow.InfoWindow;
 import android.view.MotionEvent;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import android.os.Handler;
+import android.os.Looper;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
 
@@ -77,7 +84,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private Marker userMarker;
-    private static final int REQUEST_PERMISSIONS_LOCATION = 1001;
+    private static final int REQUEST_PERMISSIONS_PEDOMETER = 1001;
+    private static final int REQUEST_PERMISSIONS_LOCATION = 1002;
     private RecyclerView poiRecyclerView;
     private PoiListAdapter poiListAdapter;
     private List<PoiItem> poiList;
@@ -87,6 +95,18 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     private Marker currentSelectedMarker;
     private HomeViewModel homeViewModel;
     private List<Map<String, String>> visitedPois;
+    private SensorManager sensorManager;
+    private Sensor stepCounterSensor;
+    private Sensor stepDetectorSensor;
+    private SensorEventListener stepListener;
+    private int initialSteps;
+    private int currentSteps;
+    private boolean isStepCounterAvailable;
+    
+    // Step tracking for money calculation
+    private int totalStepsSinceStart;
+    private int lastMoneyStepCount;
+    private static final int STEPS_PER_EURO = 20;
     
     // Cache for team colors loaded from Firebase
     private Map<Integer, Integer> teamColorsCache = new HashMap<>();
@@ -661,7 +681,10 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // 4. Initialize POIs from Firebase
         initializePOIsFromFirebase();
         
-        // 5. Check Permissions and Start Location Logic
+        // 5. Initialize Pedometer (after layout is ready)
+        initializePedometer();
+        
+        // 6. Check Permissions and Start Location Logic
         checkLocationPermissions();
         
         // Center map on user location if available, otherwise Toulouse as fallback
@@ -682,15 +705,36 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
 
     private void checkLocationPermissions() {
+        // D'ABORD demander permission podomètre PUIS localisation
+        requestPedometerPermission();
+    }
+    
+    private void requestPedometerPermission() {
+        android.util.Log.d("HomeFragment", "Début flux permissions - Demande podomètre (ACTIVITY_RECOGNITION)");
+        
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION)
+                != PackageManager.PERMISSION_GRANTED) {
+            
+            android.util.Log.d("HomeFragment", "Permission podomètre non accordée - Affichage popup");
+            requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
+                    REQUEST_PERMISSIONS_PEDOMETER);
+        } else {
+            android.util.Log.d("HomeFragment", "Permission podomètre déjà accordée - Passage direct localisation");
+            checkActualLocationPermissions();
+        }
+    }
+    
+    private void checkActualLocationPermissions() {
+        android.util.Log.d("HomeFragment", "Demande localisation (ACCESS_FINE_LOCATION)");
+        
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             
-            // Permission is not granted, request it
-            ActivityCompat.requestPermissions(requireActivity(),
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+            android.util.Log.d("HomeFragment", "Permission localisation non accordée - Affichage popup");
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_PERMISSIONS_LOCATION);
         } else {
-            // Permission already granted, start location updates
+            android.util.Log.d("HomeFragment", "Permission localisation déjà accordée - Démarrage immédiat");
             startLocationUpdates();
         }
     }
@@ -698,11 +742,26 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS_LOCATION) {
+        
+        if (requestCode == REQUEST_PERMISSIONS_PEDOMETER) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted
+                android.util.Log.d("HomeFragment", "Permission podomètre accordée");
+            } else {
+                android.util.Log.d("HomeFragment", "Permission podomètre refusée");
+            }
+            
+            // Attendre 300ms avant de demander la localisation
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                android.util.Log.d("HomeFragment", "Délai écoulé - Demande localisation");
+                checkActualLocationPermissions();
+            }, 300);
+            
+        } else if (requestCode == REQUEST_PERMISSIONS_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.d("HomeFragment", "Permission localisation accordée - Démarrage localisation");
                 startLocationUpdates();
             } else {
+                android.util.Log.d("HomeFragment", "Permission localisation refusée - Position par défaut");
                 // Permission denied. Use Toulouse as fallback location.
                 if (userMarker != null) {
                     userMarker.setTitle("Permission de localisation refusée");
@@ -762,6 +821,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             });
         }
     }
+    
+
 
     private void stopLocationUpdates() {
         if (fusedLocationClient != null && locationCallback != null) {
@@ -799,15 +860,18 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        stopLocationUpdates(); // Ensure updates are stopped on destruction
-        if (mapView != null) {
-            mapView.onDetach(); // Detach map resources
-        }
+        binding = null;
+        
+        // Stop location updates to save battery
+        stopLocationUpdates();
+        
+        // Arrêter le podomètre
+        stopPedometer();
+        
         // Clean up info bubble
         if (currentInfoBubble != null && currentInfoBubble.getParent() != null) {
             ((ViewGroup) currentInfoBubble.getParent()).removeView(currentInfoBubble);
         }
-        binding = null;
     }
 
     @Override
@@ -1138,6 +1202,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
         TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
+        TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
         
         if (usernameTextView != null) {
             usernameTextView.setText(username);
@@ -1150,6 +1215,8 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
         }
+        
+        // Le podomètre sera initialisé après la création complète de la vue
     }
     private void loadUserMoneyFromFirebase() {
         try {
@@ -1165,10 +1232,22 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
                             Integer money = documentSnapshot.getLong("money") != null ? 
                                 documentSnapshot.getLong("money").intValue() : 0;
                             
-                            // Update local SharedPreferences with Firebase value
+                            // Load step tracking data
+                            Integer totalSteps = documentSnapshot.getLong("totalSteps") != null ? 
+                                documentSnapshot.getLong("totalSteps").intValue() : 0;
+                            Integer moneySteps = documentSnapshot.getLong("moneySteps") != null ? 
+                                documentSnapshot.getLong("moneySteps").intValue() : 0;
+                            
+                            // Update local SharedPreferences with Firebase values
                             SharedPreferences.Editor editor = prefs.edit();
                             editor.putInt("money", money);
+                            editor.putInt("totalSteps", totalSteps);
+                            editor.putInt("moneySteps", moneySteps);
                             editor.apply();
+                            
+                            // Initialize step tracking
+                            totalStepsSinceStart = totalSteps;
+                            lastMoneyStepCount = moneySteps;
                             
                             // Update UI
                             updateMoneyDisplay(money);
@@ -1192,6 +1271,223 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void initializePedometer() {
+        sensorManager = (SensorManager) requireContext().getSystemService(Context.SENSOR_SERVICE);
+        
+        // Load step tracking data from SharedPreferences
+        SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+        totalStepsSinceStart = prefs.getInt("totalSteps", 0);
+        lastMoneyStepCount = prefs.getInt("moneySteps", 0);
+        
+        // Essayer d'abord le capteur STEP_COUNTER (compteur de pas total depuis le redémarrage)
+        stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        
+        // Si non disponible, essayer STEP_DETECTOR (détecte chaque pas individuellement)
+        if (stepCounterSensor == null) {
+            stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
+        }
+        
+        if (stepCounterSensor != null) {
+            // Utiliser STEP_COUNTER
+            isStepCounterAvailable = true;
+            initialSteps = -1; // Sera défini lors de la première lecture
+            currentSteps = 0;
+            
+            stepListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+                        android.util.Log.d("HomeFragment", "STEP_COUNTER event received: " + event.values[0]);
+                        
+                        // La première lecture définit notre point de départ
+                        if (initialSteps == -1) {
+                            initialSteps = (int) event.values[0];
+                            currentSteps = 0;
+                            android.util.Log.d("HomeFragment", "Initial steps set to: " + initialSteps);
+                        } else {
+                            // Calculer les pas depuis le démarrage de l'application
+                            currentSteps = (int) event.values[0] - initialSteps;
+                            android.util.Log.d("HomeFragment", "Current steps calculated: " + currentSteps);
+                        }
+                        
+                        // Update total steps and calculate money
+                        updateStepsAndMoney();
+                    }
+                }
+                
+                @Override
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {
+                    android.util.Log.d("HomeFragment", "Step sensor accuracy changed: " + accuracy);
+                }
+            };
+            
+            sensorManager.registerListener(stepListener, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
+            android.util.Log.d("HomeFragment", "Podomètre STEP_COUNTER initialisé");
+            
+        } else if (stepDetectorSensor != null) {
+            // Utiliser STEP_DETECTOR
+            isStepCounterAvailable = false;
+            currentSteps = 0;
+            
+            stepListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    if (event.sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+                        currentSteps++;
+                        
+                        // Update total steps and calculate money
+                        updateStepsAndMoney();
+                    }
+                }
+                
+                @Override
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+            };
+            
+            sensorManager.registerListener(stepListener, stepDetectorSensor, SensorManager.SENSOR_DELAY_UI);
+            android.util.Log.d("HomeFragment", "Podomètre STEP_DETECTOR initialisé");
+            
+        } else {
+            // Aucun capteur disponible
+            android.util.Log.w("HomeFragment", "Aucun capteur de pas disponible sur cet appareil");
+            updateWalkingDisplay();
+        }
+        
+        // Forcer l'affichage initial après l'initialisation
+        updateWalkingDisplay();
+        
+        // Forcer une petite pause puis réenregistrer le capteur pour s'assurer qu'il fonctionne
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (sensorManager != null && stepListener != null && stepCounterSensor != null) {
+                android.util.Log.d("HomeFragment", "Re-registering step counter sensor to ensure it works");
+                sensorManager.unregisterListener(stepListener);
+                boolean registered = sensorManager.registerListener(stepListener, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
+                android.util.Log.d("HomeFragment", "Step sensor re-registered: " + registered);
+            }
+        }, 2000); // 2 secondes de délai
+    }
+    
+    private void updateWalkingDisplay() {
+        TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
+        if (walkingTextView != null) {
+            int currentModulo = currentSteps % STEPS_PER_EURO;
+            int cyclesCompleted = currentSteps / STEPS_PER_EURO;
+            walkingTextView.setText("Marche: " + currentModulo + "/20 (" + cyclesCompleted + ")");
+        }
+    }
+    
+    private void updateStepsAndMoney() {
+        // Update display
+        updateWalkingDisplay();
+        
+        // Calculate new total steps
+        int newTotalSteps = totalStepsSinceStart + currentSteps;
+        
+        // Calculate how many euros we've earned from new steps
+        int stepsSinceLastMoney = newTotalSteps - lastMoneyStepCount;
+        int eurosEarned = stepsSinceLastMoney / STEPS_PER_EURO;
+        
+        if (eurosEarned > 0) {
+            // Update money step count
+            lastMoneyStepCount += eurosEarned * STEPS_PER_EURO;
+            
+            // Update user money
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            int currentMoney = prefs.getInt("money", 0);
+            int newMoney = currentMoney + eurosEarned;
+            
+            // Update UI immediately
+            updateMoneyDisplay(newMoney);
+            
+            // Save to SharedPreferences
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("money", newMoney);
+            editor.putInt("totalSteps", newTotalSteps);
+            editor.putInt("moneySteps", lastMoneyStepCount);
+            editor.apply();
+            
+            // Save to Firebase
+            saveStepsAndMoneyToFirebase(newMoney, newTotalSteps, lastMoneyStepCount);
+            
+            android.util.Log.d("HomeFragment", "Steps updated! Earned " + eurosEarned + "€ from " + stepsSinceLastMoney + " steps");
+        } else {
+            // Just save the total steps
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt("totalSteps", newTotalSteps);
+            editor.apply();
+            
+            // Save total steps to Firebase
+            saveStepsToFirebase(newTotalSteps);
+        }
+    }
+    
+    private void stopPedometer() {
+        if (sensorManager != null && stepListener != null) {
+            sensorManager.unregisterListener(stepListener);
+            android.util.Log.d("HomeFragment", "Podomètre arrêté");
+        }
+    }
+    
+    private void saveStepsAndMoneyToFirebase(int money, int totalSteps, int moneySteps) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                // Create updates map for batch update
+                java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                updates.put("money", money);
+                updates.put("totalSteps", totalSteps);
+                updates.put("moneySteps", moneySteps);
+                updates.put("lastStepUpdate", new java.util.Date());
+                
+                db.collection("users").document(userId)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved steps and money to Firebase");
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving steps and money to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save steps and money to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving steps and money to Firebase", e);
+        }
+    }
+    
+    private void saveStepsToFirebase(int totalSteps) {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String userId = prefs.getString("user_id", null);
+            
+            if (userId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                updates.put("totalSteps", totalSteps);
+                updates.put("lastStepUpdate", new java.util.Date());
+                
+                db.collection("users").document(userId)
+                    .update(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved steps to Firebase");
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error saving steps to Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No user ID found, cannot save steps to Firebase");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception saving steps to Firebase", e);
         }
     }
     
@@ -1232,6 +1528,16 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         // Update UI
         updateMoneyDisplay(money);
         
+    }
+    
+    // Public method to get current steps for testing
+    public int getCurrentSteps() {
+        return currentSteps;
+    }
+    
+    // Public method to get total steps since app install
+    public int getTotalStepsSinceStart() {
+        return totalStepsSinceStart + currentSteps;
     }
     
     private void loadUserVisitedPois() {
