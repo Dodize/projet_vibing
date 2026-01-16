@@ -15,6 +15,7 @@ import android.widget.Toast;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ImageButton;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -31,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.vibing.R; // Import R for resources
 import com.example.vibing.databinding.FragmentHomeBinding;
 import com.example.vibing.models.Poi;
+import com.example.vibing.ui.tutorial.TutorialDialog;
 
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -77,10 +79,12 @@ import android.content.Intent;
 import java.util.Map;
 import java.util.HashMap;
 
-public class HomeFragment extends Fragment implements OnMarkerClickListener {
+public class HomeFragment extends Fragment implements OnMarkerClickListener, TutorialDialog.TutorialDialogListener {
 
     private FragmentHomeBinding binding;
     private MapView mapView;
+    private TutorialDialog tutorialDialog;
+    private ImageButton tutorialButton;
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private Marker userMarker;
@@ -256,6 +260,130 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
 
     // Flag to track if visited POIs have been loaded
     private boolean visitedPoisLoaded = false;
+
+private void initializeTutorial() {
+        // Initialize tutorial button
+        tutorialButton = binding.tutorialButton;
+        tutorialButton.setOnClickListener(v -> showTutorial());
+        
+        // Initialize tutorial dialog
+        tutorialDialog = new TutorialDialog(getContext(), this);
+        
+        // Check if it's first time using the app and show tutorial automatically
+        if (!TutorialDialog.isTutorialCompleted(getContext())) {
+            // Show tutorial after a short delay to allow map to load
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (tutorialDialog != null && !tutorialDialog.isShowing()) {
+                    // Set map and POI markers before showing
+                    updateTutorialWithPoiData();
+                    tutorialDialog.show();
+                }
+            }, 2000);
+        }
+    }
+    
+    private void updateTutorialWithPoiData() {
+        if (tutorialDialog != null && mapView != null) {
+            tutorialDialog.setMapView(mapView);
+            
+            // Extract POI markers from map
+            List<Marker> markers = new ArrayList<>();
+            if (poiList != null) {
+                for (PoiItem poi : poiList) {
+                    if (poi.marker != null) {
+                        markers.add(poi.marker);
+                    }
+                }
+            }
+            tutorialDialog.setPoiMarkers(markers);
+        }
+    }
+
+    private void showTutorial() {
+        if (tutorialDialog != null && !tutorialDialog.isShowing()) {
+            // Update tutorial with current POI data
+            updateTutorialWithPoiData();
+            tutorialDialog.show();
+        }
+    }
+
+    // TutorialDialogListener implementation
+    @Override
+    public void onTutorialStarted() {
+        android.util.Log.d("TUTORIAL", "Tutorial started");
+    }
+
+    @Override
+    public void onTutorialFinished() {
+        android.util.Log.d("TUTORIAL", "Tutorial finished");
+        Toast.makeText(getContext(), "Tutoriel terminé ! Bon jeu !", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onTutorialClosed() {
+        android.util.Log.d("TUTORIAL", "Tutorial closed");
+    }
+
+    @Override
+    public void onZoomToPoi(org.osmdroid.views.overlay.Marker poiMarker) {
+        if (mapView != null && poiMarker != null) {
+            // Zoom to the POI location
+            GeoPoint poiLocation = poiMarker.getPosition();
+            mapView.getController().animateTo(poiLocation);
+            mapView.getController().setZoom(17.0);
+            
+            // Highlight the marker briefly
+            if (poiMarker.getIcon() != null) {
+                android.graphics.drawable.Drawable originalIcon = poiMarker.getIcon();
+                // Create a highlighted version
+                android.graphics.drawable.ShapeDrawable highlightIcon = new android.graphics.drawable.ShapeDrawable(new android.graphics.drawable.shapes.OvalShape());
+                highlightIcon.getPaint().setColor(0xFFFFFF00); // Yellow highlight
+                highlightIcon.getPaint().setStrokeWidth(6);
+                highlightIcon.getPaint().setStyle(android.graphics.Paint.Style.STROKE);
+                highlightIcon.setIntrinsicWidth(50);
+                highlightIcon.setIntrinsicHeight(50);
+                
+                poiMarker.setIcon(highlightIcon);
+                mapView.invalidate();
+                
+                // Reset after a delay
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    poiMarker.setIcon(originalIcon);
+                    mapView.invalidate();
+                }, 2000);
+            }
+        }
+    }
+
+    @Override
+    public void onHighlightMoneySection() {
+        // Highlight the money text view in the user info card
+        TextView moneyTextView = binding.moneyTextView;
+        if (moneyTextView != null) {
+            // Create highlight effect
+            android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
+            background.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            background.setCornerRadius(8);
+            background.setStroke(4, getResources().getColor(android.R.color.holo_orange_dark, null));
+            background.setColor(getResources().getColor(android.R.color.transparent, null));
+            
+            moneyTextView.setBackground(background);
+            
+            // Remove highlight after delay
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                moneyTextView.setBackground(null);
+            }, 3000);
+        }
+    }
+
+    @Override
+    public void onClearHighlights() {
+        // Clear any active highlights
+        TextView moneyTextView = binding.moneyTextView;
+        if (moneyTextView != null) {
+            moneyTextView.setBackground(null);
+        }
+    }
 
     private void initializePOIsFromFirebase() {
         homeViewModel.getPois().observe(getViewLifecycleOwner(), pois -> {
@@ -572,8 +700,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        // Display user information from SharedPreferences
+// Display user information from SharedPreferences
         displayUserInfo();
+        
+        // Initialize tutorial button and dialog
+        initializeTutorial();
         
         // Initialize team colors cache with default values and load from Firebase
         initializeTeamColorsCache();
@@ -857,7 +988,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         stopLocationUpdates();
     }
 
-    @Override
+@Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
@@ -867,6 +998,12 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         
         // Arrêter le podomètre
         stopPedometer();
+        
+        // Clean up tutorial dialog
+        if (tutorialDialog != null && tutorialDialog.isShowing()) {
+            tutorialDialog.dismiss();
+        }
+        tutorialDialog = null;
         
         // Clean up info bubble
         if (currentInfoBubble != null && currentInfoBubble.getParent() != null) {

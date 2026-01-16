@@ -14,7 +14,7 @@
         <!-- Customize your theme here. -->
     </style>
     
-    <!-- Theme for TeamSelectionActivity without ActionBar -->
+<!-- Theme for TeamSelectionActivity without ActionBar -->
     <style name="Theme.Vibing.NoActionBar" parent="Theme.MaterialComponents.Light.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/purple_500</item>
@@ -27,5 +27,14 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
+    </style>
+    
+    <!-- Theme for Tutorial Dialog -->
+    <style name="TutorialDialogTheme" parent="Theme.MaterialComponents.Light.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>
