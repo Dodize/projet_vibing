@@ -70,17 +70,51 @@
                 android:textColor="?android:attr/textColorPrimary"
                 android:gravity="center" />
 
-            <!-- Tutorial content -->
-            <TextView
-                android:id="@+id/tutorial_content"
+            <!-- Tutorial content with team color -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                android:text="@string/tutorial_step1_content"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="?android:attr/textColorSecondary"
-                android:lineSpacingExtra="4dp"
-                android:gravity="center" />
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tutorial_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tutorial_step1_content"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:lineSpacingExtra="4dp"
+                    android:gravity="center" />
+
+                <!-- Team color indicator (shown only for step 2) -->
+                <LinearLayout
+                    android:id="@+id/team_color_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Couleur de votre équipe : "
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                        android:textColor="?android:attr/textColorSecondary" />
+
+                    <View
+                        android:id="@+id/team_color_circle"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/team_color_circle" />
+
+                </LinearLayout>
+
+            </LinearLayout>
 
 
             <!-- Navigation buttons -->

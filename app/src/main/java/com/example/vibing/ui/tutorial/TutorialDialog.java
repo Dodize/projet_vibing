@@ -18,6 +18,7 @@ import androidx.fragment.app.FragmentManager;
 import com.example.vibing.R;
 import com.example.vibing.models.User;
 import com.google.android.material.card.MaterialCardView;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
@@ -51,6 +52,8 @@ public class TutorialDialog extends Dialog {
     private Button nextButton;
     private ImageView closeButton;
     private View tutorialOverlay;
+    private View teamColorContainer;
+    private View teamColorCircle;
     
     private int currentStep = 0;
     private static final int TOTAL_STEPS = 6;
@@ -58,6 +61,7 @@ public class TutorialDialog extends Dialog {
     private MapView mapView;
     private List<Marker> poiMarkers;
     private Random random = new Random();
+    private FirebaseFirestore db;
 
     public TutorialDialog(@NonNull Context context, TutorialDialogListener listener) {
         this(context, listener, null);
@@ -68,6 +72,7 @@ public class TutorialDialog extends Dialog {
         this.context = context;
         this.listener = listener;
         this.fragmentManager = fragmentManager;
+        this.db = FirebaseFirestore.getInstance();
     }
 
     @Override
@@ -94,6 +99,8 @@ public class TutorialDialog extends Dialog {
         nextButton = findViewById(R.id.next_button);
         closeButton = findViewById(R.id.close_button);
         tutorialOverlay = findViewById(R.id.tutorial_overlay);
+        teamColorContainer = findViewById(R.id.team_color_container);
+        teamColorCircle = findViewById(R.id.team_color_circle);
     }
 
     private void setupClickListeners() {
@@ -149,6 +156,13 @@ public class TutorialDialog extends Dialog {
         titleTextView.setText(titles[currentStep]);
         contentTextView.setText(contents[currentStep]);
         stepIndicatorTextView.setText((currentStep + 1) + " / " + TOTAL_STEPS);
+        
+        // Show/hide team color circle based on step
+        if (currentStep == 1) { // Step 2
+            teamColorContainer.setVisibility(View.VISIBLE);
+        } else {
+            teamColorContainer.setVisibility(View.GONE);
+        }
         
         // Update button states
         previousButton.setEnabled(currentStep > 0);
@@ -209,11 +223,27 @@ public class TutorialDialog extends Dialog {
             String userName = prefs.getString("username", "Joueur");
             String teamName = prefs.getString("team_name", "Conquérants");
             String teamColor = prefs.getString("team_color", "Rouge");
+            
+            // Get team color hex from database
+            String teamColorHex = getTeamColorHex(prefs.getString("team_id", ""));
                         
-            // Update step 2 content with actual team information
-            String step2Content = context.getString(R.string.tutorial_step2_content, teamName, teamColor);
+            // Update step 2 content with team name (no color name)
+            String step2Content = context.getString(R.string.tutorial_step2_content, teamName);
             contentTextView.setText(step2Content);
             
+            // Set the circle color
+            if (teamColorHex != null && !teamColorHex.isEmpty()) {
+                try {
+                    int color = android.graphics.Color.parseColor(teamColorHex);
+                    teamColorCircle.setBackgroundColor(color);
+                } catch (Exception e) {
+                    // Fallback to default color mapping if hex parsing fails
+                    teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+                }
+            } else {
+                // Fallback to default color mapping
+                teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+            }
         }
     }
 
@@ -341,6 +371,89 @@ public class TutorialDialog extends Dialog {
         super.show();
         if (listener != null) {
             listener.onTutorialStarted();
+        }
+    }
+    
+    /**
+     * Get team color hex from database
+     */
+    private String getTeamColorHex(String teamId) {
+        if (teamId == null || teamId.isEmpty()) {
+            return null;
+        }
+        
+        // Get team color from Firebase
+        try {
+            // Synchronous query would block UI, so we'll use a simple approach
+            // that gets the color from SharedPreferences if cached
+            SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
+            String cachedColorHex = prefs.getString("team_color_hex", null);
+            
+            if (cachedColorHex != null && !cachedColorHex.isEmpty()) {
+                return cachedColorHex;
+            }
+            
+            // For the tutorial, we'll do a quick async query and cache the result
+            // for future use, but return null for now to use fallback
+            db.collection("teams")
+                    .document(teamId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            String colorHex = documentSnapshot.getString("colorHex");
+                            if (colorHex != null && !colorHex.isEmpty()) {
+                                // Cache the color for future use
+                                SharedPreferences.Editor editor = prefs.edit();
+                                editor.putString("team_color_hex", colorHex);
+                                editor.apply();
+                                
+                                // Update the circle if we're still on step 2
+                                if (currentStep == 1 && teamColorCircle != null) {
+                                    try {
+                                        int color = android.graphics.Color.parseColor(colorHex);
+                                        teamColorCircle.setBackgroundColor(color);
+                                    } catch (Exception e) {
+                                        // Keep fallback color if parsing fails
+                                    }
+                                }
+                            }
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        // Log error but continue with fallback
+                        android.util.Log.e("TutorialDialog", "Error fetching team color", e);
+                    });
+            
+            return null; // Return null to use fallback while async query completes
+        } catch (Exception e) {
+            android.util.Log.e("TutorialDialog", "Error in getTeamColorHex", e);
+            return null;
+        }
+    }
+    
+    /**
+     * Get default team color based on color name
+     */
+    private int getDefaultTeamColor(String colorName) {
+        if (colorName == null) return context.getResources().getColor(R.color.primary_blue, null);
+        
+        switch (colorName.toLowerCase()) {
+            case "rouge":
+            case "red":
+                return context.getResources().getColor(android.R.color.holo_red_dark, null);
+            case "bleu":
+            case "blue":
+                return context.getResources().getColor(android.R.color.holo_blue_dark, null);
+            case "vert":
+            case "green":
+                return context.getResources().getColor(android.R.color.holo_green_dark, null);
+            case "orange":
+                return context.getResources().getColor(android.R.color.holo_orange_dark, null);
+            case "violet":
+            case "purple":
+                return context.getResources().getColor(android.R.color.holo_purple, null);
+            default:
+                return context.getResources().getColor(R.color.primary_blue, null);
         }
     }
 }
