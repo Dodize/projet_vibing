@@ -19,6 +19,7 @@ public class Poi {
     private java.util.Date captureTime;
     private java.util.Date lastUpdated;
     private java.util.Date freezeUntil;
+    private java.util.Date freezeBonusUntil;
     private List<String> keywords;
     
     // Raw data map for manual extraction
@@ -293,5 +294,20 @@ public class Poi {
     
     public void setFreezeUntil(java.util.Date freezeUntil) {
         this.freezeUntil = freezeUntil;
+    }
+    
+    public java.util.Date getFreezeBonusUntil() {
+        // Try raw data map first for freezeBonusUntil
+        if (rawData != null && rawData.containsKey("freezeBonusUntil")) {
+            Object freezeObj = rawData.get("freezeBonusUntil");
+            if (freezeObj instanceof java.util.Date) {
+                return (java.util.Date) freezeObj;
+            }
+        }
+        return freezeBonusUntil;
+    }
+    
+    public void setFreezeBonusUntil(java.util.Date freezeBonusUntil) {
+        this.freezeBonusUntil = freezeBonusUntil;
     }
 }

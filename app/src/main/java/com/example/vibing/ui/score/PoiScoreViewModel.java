@@ -26,7 +26,7 @@ public class PoiScoreViewModel extends ViewModel {
     private long lastKnownScoreTime = 0; // Local timestamp for score calculation
     private static final long CAPTURE_GRACE_PERIOD_MILLIS = 30 * 1000; // 30 seconds grace period after capture
     
-    private static final long DECREMENT_RATE_MILLIS = 60 * 60 * 1000; // 1 point per hour
+    private static final long DECREMENT_RATE_MILLIS = 30 * 1000; // 1 point per 30 seconds (for testing)
     private static final int MIN_SCORE = 10;
     
     // Bonus management
@@ -203,24 +203,56 @@ public class PoiScoreViewModel extends ViewModel {
 // Check if we're in grace period after capture
                             boolean inGracePeriod = wasRecentlyCaptured();
                             
-                            // Check if freeze bonus is active
+                            // Check if freeze bonus is active (both local and Firebase)
                             boolean freezeBonusActive = (activeFreezeBonus != null && activeFreezeBonus.isActive() && !activeFreezeBonus.isExpired());
                             
+                            // Check if POI has freeze bonus from Firebase
+                            java.util.Date freezeBonusUntil = null;
+                            if (data.containsKey("freezeBonusUntil")) {
+                                Object freezeBonusObj = data.get("freezeBonusUntil");
+                                if (freezeBonusObj instanceof Date) {
+                                    freezeBonusUntil = (Date) freezeBonusObj;
+                                } else if (freezeBonusObj != null && freezeBonusObj.getClass().getSimpleName().equals("Timestamp")) {
+                                    try {
+                                        java.lang.reflect.Method toDateMethod = freezeBonusObj.getClass().getMethod("toDate");
+                                        freezeBonusUntil = (java.util.Date) toDateMethod.invoke(freezeBonusObj);
+                                    } catch (Exception e) {
+                                        android.util.Log.e("POI_SCORE", "Error converting freezeBonusUntil Timestamp", e);
+                                    }
+                                }
+                            }
+                            boolean firebaseFreezeBonusActive = (freezeBonusUntil != null && freezeBonusUntil.after(new java.util.Date()));
+                            
                             // Check if POI is frozen by timestamp
-                            java.util.Date freezeUntil = document.getDate("freezeUntil");
+                            java.util.Date freezeUntil = null;
+                            if (data.containsKey("freezeUntil")) {
+                                Object freezeObj = data.get("freezeUntil");
+                                if (freezeObj instanceof Date) {
+                                    freezeUntil = (Date) freezeObj;
+                                } else if (freezeObj != null && freezeObj.getClass().getSimpleName().equals("Timestamp")) {
+                                    try {
+                                        java.lang.reflect.Method toDateMethod = freezeObj.getClass().getMethod("toDate");
+                                        freezeUntil = (java.util.Date) toDateMethod.invoke(freezeObj);
+                                    } catch (Exception e) {
+                                        android.util.Log.e("POI_SCORE", "Error converting freezeUntil Timestamp", e);
+                                    }
+                                }
+                            }
                             boolean timestampFreezeActive = (freezeUntil != null && freezeUntil.after(new java.util.Date()));
                              
                              // ALWAYS calculate dynamic score - NEVER use Firebase score directly
                              int decrementedAmount = 0;
                              int dynamicScore = baseScore;
                              
-                             if (!inGracePeriod && !freezeBonusActive && !timestampFreezeActive) {
+                             if (!inGracePeriod && !freezeBonusActive && !firebaseFreezeBonusActive && !timestampFreezeActive) {
                                  decrementedAmount = (int) (timeElapsed / DECREMENT_RATE_MILLIS);
                                  dynamicScore = Math.max(MIN_SCORE, baseScore - decrementedAmount);
                                  
 } else {
                                   if (freezeBonusActive) {
-                                      android.util.Log.d("POI_SCORE", "FREEZE BONUS ACTIVE: No decrement applied");
+                                      android.util.Log.d("POI_SCORE", "LOCAL FREEZE BONUS ACTIVE: No decrement applied");
+                                  } else if (firebaseFreezeBonusActive) {
+                                      android.util.Log.d("POI_SCORE", "FIREBASE FREEZE BONUS ACTIVE: No decrement applied until " + freezeBonusUntil);
                                   } else if (timestampFreezeActive) {
                                       android.util.Log.d("POI_SCORE", "TIMESTAMP FREEZE ACTIVE: No decrement applied until " + freezeUntil);
                                   } else {
@@ -228,11 +260,22 @@ public class PoiScoreViewModel extends ViewModel {
                                   }
                               }
                             
-                            // ALWAYS update local score with calculated dynamic score
-                            // NEVER display raw Firebase score
-                            mCurrentScore.setValue(dynamicScore);
-                            // Reset justCaptured flag after processing
-                            justCaptured = false;
+// ALWAYS update local score with calculated dynamic score
+                             // NEVER display raw Firebase score
+                             mCurrentScore.setValue(dynamicScore);
+                             
+                             // Special logging for Capitole-related POIs
+                             if (poiName != null && (poiName.toLowerCase().contains("capitole") || 
+                                 poiName.toLowerCase().contains("théâtre") || 
+                                 poiName.toLowerCase().contains("place"))) {
+                                 android.util.Log.i("CAPITOLE_DEBUG", "🏛️ " + poiName + " - Score: " + dynamicScore + 
+                                     " | Base: " + baseScore + " | Decremented: " + decrementedAmount + 
+                                     " | Time elapsed: " + (timeElapsed / 1000) + "s" +
+                                     " | Frozen: " + timestampFreezeActive);
+                             }
+                             
+                             // Reset justCaptured flag after processing
+                             justCaptured = false;
                             
                         }
                     } else {
@@ -270,6 +313,12 @@ private void updateZoneInFirebase(int newScore, String teamId) {
             // Store both capture timestamp and last updated timestamp
             updates.put("captureTime", new java.util.Date(updateTime));
             updates.put("lastUpdated", new java.util.Date(updateTime));
+            
+            // Also update freeze bonus if active
+            if (activeFreezeBonus != null && activeFreezeBonus.isActive() && !activeFreezeBonus.isExpired()) {
+                long freezeEndTime = System.currentTimeMillis() + activeFreezeBonus.getRemainingTime();
+                updates.put("freezeBonusUntil", new java.util.Date(freezeEndTime));
+            }
             
             db.collection("pois").document(poiId)
                 .update(updates);
@@ -472,6 +521,26 @@ public boolean handleQcmResult(int playerScore, String playerTeam) {
         if (activeFreezeBonus == null) {
             activeFreezeBonus = new Bonus(com.example.vibing.models.BonusType.FREEZE_SCORE);
             activeFreezeBonus.activate();
+            
+            // Synchronize immediately with Firebase
+            syncFreezeBonusToFirebase();
+        }
+    }
+    
+    private void syncFreezeBonusToFirebase() {
+        if (poiId != null && activeFreezeBonus != null && activeFreezeBonus.isActive() && !activeFreezeBonus.isExpired()) {
+            long freezeEndTime = System.currentTimeMillis() + activeFreezeBonus.getRemainingTime();
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("freezeBonusUntil", new java.util.Date(freezeEndTime));
+            
+            db.collection("pois").document(poiId)
+                .update(updates)
+                .addOnSuccessListener(aVoid -> {
+                    android.util.Log.d("POI_SCORE", "Freeze bonus synchronized to Firebase until: " + new java.util.Date(freezeEndTime));
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("POI_SCORE", "Failed to sync freeze bonus to Firebase", e);
+                });
         }
     }
     
