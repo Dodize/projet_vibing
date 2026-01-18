@@ -1327,7 +1327,7 @@ private void initializeTutorial() {
         navController.navigate(R.id.action_homeFragment_to_poiScoreFragment, bundle);
     }
     
-private void displayUserInfo() {
+    private void displayUserInfo() {
         SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
         String username = prefs.getString("username", "Joueur");
         String teamName = prefs.getString("team_name", "Équipe inconnue");
@@ -1335,6 +1335,9 @@ private void displayUserInfo() {
         
         // Load current money from Firebase
         loadUserMoneyFromFirebase();
+        
+        // Load team color from Firebase
+        loadTeamColorFromFirebase();
         
         TextView usernameTextView = binding.getRoot().findViewById(R.id.username_text_view);
         TextView teamTextView = binding.getRoot().findViewById(R.id.team_text_view);
@@ -1408,6 +1411,102 @@ private void displayUserInfo() {
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");
+        }
+    }
+    
+    private void loadTeamColorFromFirebase() {
+        try {
+            SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
+            String teamId = prefs.getString("team_id", null);
+            
+            // First, try to use cached color
+            String cachedTeamColorHex = prefs.getString("team_color_hex", null);
+            if (cachedTeamColorHex != null && !cachedTeamColorHex.isEmpty()) {
+                try {
+                    int color = android.graphics.Color.parseColor(cachedTeamColorHex);
+                    setTeamCircleColor(color);
+                    android.util.Log.d("HOME_FRAGMENT", "Using cached team color: " + cachedTeamColorHex);
+                } catch (Exception e) {
+                    android.util.Log.e("HOME_FRAGMENT", "Error parsing cached team color", e);
+                }
+            }
+            
+            if (teamId != null) {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("teams").document(teamId)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (documentSnapshot.exists()) {
+                            String teamColorHex = documentSnapshot.getString("colorHex");
+                            String teamColor = documentSnapshot.getString("color");
+                            
+                            // Cache the color information
+                            SharedPreferences.Editor editor = prefs.edit();
+                            editor.putString("team_color", teamColor);
+                            editor.putString("team_color_hex", teamColorHex);
+                            editor.apply();
+                            
+                            // Set the circle color
+                            if (teamColorHex != null && !teamColorHex.isEmpty()) {
+                                try {
+                                    int color = android.graphics.Color.parseColor(teamColorHex);
+                                    setTeamCircleColor(color);
+                                    android.util.Log.d("HOME_FRAGMENT", "Successfully loaded team color from Firebase: " + teamColorHex);
+                                } catch (Exception e) {
+                                    android.util.Log.e("HOME_FRAGMENT", "Error parsing team color hex: " + teamColorHex, e);
+                                    // Fallback to color name
+                                    setTeamCircleColor(getDefaultTeamColor(teamColor));
+                                }
+                            } else {
+                                // Fallback to color name
+                                setTeamCircleColor(getDefaultTeamColor(teamColor));
+                            }
+                        } else {
+                            android.util.Log.w("HOME_FRAGMENT", "Team document not found in Firebase for teamId: " + teamId);
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        android.util.Log.e("HOME_FRAGMENT", "Error loading team color from Firebase", e);
+                    });
+            } else {
+                android.util.Log.w("HOME_FRAGMENT", "No team ID found, using default color");
+            }
+        } catch (Exception e) {
+            android.util.Log.e("HOME_FRAGMENT", "Exception loading team color", e);
+        }
+    }
+    
+    private void setTeamCircleColor(int color) {
+        View teamColorCircle = binding.getRoot().findViewById(R.id.team_color_circle);
+        if (teamColorCircle != null) {
+            android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+            circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            circle.setColor(color);
+            circle.setSize(24, 24); // 24dp x 24dp
+            teamColorCircle.setBackground(circle);
+        }
+    }
+    
+    private int getDefaultTeamColor(String colorName) {
+        if (colorName == null) return getResources().getColor(R.color.primary_blue, null);
+        
+        switch (colorName.toLowerCase()) {
+            case "rouge":
+            case "red":
+                return getResources().getColor(android.R.color.holo_red_dark, null);
+            case "bleu":
+            case "blue":
+                return getResources().getColor(android.R.color.holo_blue_dark, null);
+            case "vert":
+            case "green":
+                return getResources().getColor(android.R.color.holo_green_dark, null);
+            case "orange":
+                return getResources().getColor(android.R.color.holo_orange_dark, null);
+            case "violet":
+            case "purple":
+                return getResources().getColor(android.R.color.holo_purple, null);
+            default:
+                return getResources().getColor(R.color.primary_blue, null);
         }
     }
     
