@@ -37,6 +37,7 @@ import com.example.vibing.models.QuizQuestion;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
 import com.example.vibing.ui.camera.CameraCaptureFragment;
+import com.example.vibing.ui.quiz.QuizResultDialog;
 
 import androidx.fragment.app.FragmentResultListener;
 import java.util.ArrayList;
@@ -232,23 +233,12 @@ public class PoiScoreFragment extends Fragment {
     private void handleVoiceCommand(String command) {
         Log.i("PoiScoreFragment", "handleVoiceCommand() called with: " + command);
         // This is where you'll recognize specific phrases
-if (command.contains("je dépose les armes")) {
+            if (command.contains("je dépose les armes")) {
             poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
             recordPoiVisit(); // Enregistrer la visite du POI
-            Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
             
-            // Retourner à la carte après le bonus pour éviter les actions multiples
-            new android.os.Handler().postDelayed(() -> {
-                NavController navController = Navigation.findNavController(requireView());
-                navController.navigateUp(); // Retour à la page principale pour recharger la carte
-            }, 2000); // 2 secondes de délai
-        } else if (command.contains("je capture la zone")) {
-            Log.i("PoiScoreFragment", "Command: je capture la zone - starting with photo recognition");
-            Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
-            navigateToCameraCapture();
-        } else {
-            Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
-            Toast.makeText(getContext(), "Commande non reconnue: " + command, Toast.LENGTH_LONG).show();
+            // Show surrender dialog
+            showSurrenderDialog();
         }
     }
 
@@ -471,41 +461,67 @@ if (command.contains("je dépose les armes")) {
             // Enregistrer la visite du POI (que ce soit succès ou échec)
             recordPoiVisit();
             
+            // Get current zone score for dialog
+            int currentZoneScore = poiScoreViewModel.getCurrentScore().getValue() != null ? 
+                poiScoreViewModel.getCurrentScore().getValue() : 100;
+            
             // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
             boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
             
-            if (playerWon) {
-                // Succès : le score utilisateur est supérieur au score dynamique de la zone
-                poiOwningTeam = userTeamId; // Update local owning team
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!", Toast.LENGTH_LONG).show();
-                    
-                    // Attendre un peu avant de retourner à la page principale pour permettre à l'utilisateur de voir le message
-                    new android.os.Handler().postDelayed(() -> {
-                        NavController navController = Navigation.findNavController(requireView());
-                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
-                    }, 2000); // 2 secondes de délai
-                }
-} else {
-                // Échec : le score utilisateur est inférieur ou égal au score dynamique de la zone
-                if (getContext() != null) {
-                    // Pénalité de 10€ pour l'échec du quiz
-                    poiScoreViewModel.addMoneyPenalty(10, requireContext());
-                    Toast.makeText(getContext(), "Quiz terminé! Votre score: " + quizScore + ". Score insuffisant pour capturer la zone " + (poiName != null ? poiName : "inconnue") + ". Pénalité de 10€ appliquée.", Toast.LENGTH_LONG).show();
-                    
-                    // Attendre un peu avant de retourner à la page principale
-                    new android.os.Handler().postDelayed(() -> {
-                        NavController navController = Navigation.findNavController(requireView());
-                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
-                    }, 2000); // 2 secondes de délai
-                }
-            }
+            // Show appropriate dialog based on result
+            showQuizResultDialog(playerWon, quizScore, currentZoneScore);
         } catch (Exception e) {
             android.util.Log.e("POI_SCORE", "Error in checkQuizResult: " + e.getMessage());
             if (getContext() != null) {
                 Toast.makeText(getContext(), "Une erreur est survenue lors du traitement du quiz", Toast.LENGTH_SHORT).show();
             }
         }
+    }
+    
+    private void showQuizResultDialog(boolean playerWon, int quizScore, int zoneScore) {
+        QuizResultDialog.ResultType resultType = playerWon ? 
+            QuizResultDialog.ResultType.SUCCESS : 
+            QuizResultDialog.ResultType.FAILURE;
+        
+        QuizResultDialog dialog = QuizResultDialog.newInstance(
+            poiName,
+            resultType,
+            userTeamId,
+            quizScore,
+            zoneScore
+        );
+        
+        dialog.setQuizResultListener(new QuizResultDialog.QuizResultListener() {
+            @Override
+            public void onDialogClosed() {
+                // Navigate back to main page after dialog closes
+                NavController navController = Navigation.findNavController(requireView());
+                navController.navigateUp(); // Retour à la page principale pour recharger la carte
+            }
+        });
+        
+        dialog.show(getParentFragmentManager(), "QuizResultDialog");
+    }
+    
+    private void showSurrenderDialog() {
+        QuizResultDialog dialog = QuizResultDialog.newInstance(
+            poiName,
+            QuizResultDialog.ResultType.SURRENDER,
+            userTeamId,
+            0,
+            0
+        );
+        
+        dialog.setQuizResultListener(new QuizResultDialog.QuizResultListener() {
+            @Override
+            public void onDialogClosed() {
+                // Navigate back to main page after dialog closes
+                NavController navController = Navigation.findNavController(requireView());
+                navController.navigateUp(); // Retour à la page principale pour recharger la carte
+            }
+        });
+        
+        dialog.show(getParentFragmentManager(), "QuizResultDialog");
     }
 
     // Helper methods for API questions

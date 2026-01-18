@@ -30,4 +30,8 @@
     <string name="tutorial_step4_content">Pour capturer une zone :\n\n1. Prenez une photo du POI pour valider votre arrivée\n2. Répondez à un quiz\n3. Obtenez suffisamment de points pour capturer la zone</string>
     <string name="tutorial_step5_content">L\'argent virtuel s\'obtient en marchant :\n\n20 pas = 1€\n\nUtilisez cet argent pour acheter des bonus qui vous aideront dans les quiz.</string>
     <string name="tutorial_step6_content">Vous êtes maintenant prêt à jouer !\n\nBonne chance et que le meilleur gagne ! Combattez aux côtés de votre équipe pour la victoire !</string>
+    
+    <!-- Quiz Result Dialog strings -->
+    <string name="quiz_result_icon_description">Icône de résultat de quiz</string>
+    <string name="warning_icon_description">Icône d\'avertissement</string>
 </resources>
