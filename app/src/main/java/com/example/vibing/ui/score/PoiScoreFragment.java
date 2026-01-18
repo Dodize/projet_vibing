@@ -535,7 +535,7 @@ public class PoiScoreFragment extends Fragment {
         
         boostButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.BOOST_SCORE.getCost()) {
-                int newScore = quizScore + 20;
+                int newScore = quizScore + 5;
                 userMoney -= BonusType.BOOST_SCORE.getCost();
                 poiScoreViewModel.setMoney(userMoney);
                 poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
