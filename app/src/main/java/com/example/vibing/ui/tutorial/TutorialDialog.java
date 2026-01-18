@@ -88,6 +88,12 @@ public class TutorialDialog extends Dialog {
         initializeViews();
         setupClickListeners();
         loadTutorialState();
+        
+        // Preload team info if starting on step 2
+        if (currentStep == 1) {
+            preloadTeamInfo();
+        }
+        
         updateStepContent();
     }
 
@@ -221,29 +227,10 @@ public class TutorialDialog extends Dialog {
             // Utiliser le même nom de SharedPreferences que HomeFragment
             SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
             String userName = prefs.getString("username", "Joueur");
-            String teamName = prefs.getString("team_name", "Conquérants");
-            String teamColor = prefs.getString("team_color", "Rouge");
+            String teamId = prefs.getString("team_id", "");
             
-            // Get team color hex from database
-            String teamColorHex = getTeamColorHex(prefs.getString("team_id", ""));
-                        
-            // Update step 2 content with team name (no color name)
-            String step2Content = context.getString(R.string.tutorial_step2_content, teamName);
-            contentTextView.setText(step2Content);
-            
-            // Set the circle color
-            if (teamColorHex != null && !teamColorHex.isEmpty()) {
-                try {
-                    int color = android.graphics.Color.parseColor(teamColorHex);
-                    teamColorCircle.setBackgroundColor(color);
-                } catch (Exception e) {
-                    // Fallback to default color mapping if hex parsing fails
-                    teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
-                }
-            } else {
-                // Fallback to default color mapping
-                teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
-            }
+            // Always fetch fresh data for step 2
+            fetchTeamInfoFromFirebase(teamId, userName);
         }
     }
 
@@ -375,60 +362,135 @@ public class TutorialDialog extends Dialog {
     }
     
     /**
-     * Get team color hex from database
+     * Preload team info from Firebase (called when starting on step 2)
      */
-    private String getTeamColorHex(String teamId) {
+    private void preloadTeamInfo() {
+        SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
+        String userName = prefs.getString("username", "Joueur");
+        String teamId = prefs.getString("team_id", "");
+        
+        // Force refresh from Firebase even if cached
+        fetchTeamInfoFromFirebase(teamId, userName, true);
+    }
+    
+    /**
+     * Fetch team info from Firebase and update the tutorial content
+     */
+    private void fetchTeamInfoFromFirebase(String teamId, String userName) {
+        fetchTeamInfoFromFirebase(teamId, userName, false);
+    }
+    
+    /**
+     * Fetch team info from Firebase and update the tutorial content
+     */
+    private void fetchTeamInfoFromFirebase(String teamId, String userName, boolean forceRefresh) {
         if (teamId == null || teamId.isEmpty()) {
-            return null;
+            // Use default values if no team ID
+            showDefaultTeamInfo(userName);
+            return;
         }
         
-        // Get team color from Firebase
-        try {
-            // Synchronous query would block UI, so we'll use a simple approach
-            // that gets the color from SharedPreferences if cached
-            SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
-            String cachedColorHex = prefs.getString("team_color_hex", null);
+        SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
+        
+        // Check if we have cached info and are not forcing refresh
+        if (!forceRefresh) {
+            String cachedTeamName = prefs.getString("team_name", null);
+            String cachedTeamColor = prefs.getString("team_color", null);
+            String cachedTeamColorHex = prefs.getString("team_color_hex", null);
             
-            if (cachedColorHex != null && !cachedColorHex.isEmpty()) {
-                return cachedColorHex;
+            if (cachedTeamName != null && cachedTeamColor != null) {
+                // Use cached info immediately
+                updateStep2ContentWithFetchedInfo(userName, cachedTeamName, cachedTeamColor, cachedTeamColorHex);
+                return;
             }
-            
-            // For the tutorial, we'll do a quick async query and cache the result
-            // for future use, but return null for now to use fallback
-            db.collection("teams")
-                    .document(teamId)
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            String colorHex = documentSnapshot.getString("colorHex");
-                            if (colorHex != null && !colorHex.isEmpty()) {
-                                // Cache the color for future use
-                                SharedPreferences.Editor editor = prefs.edit();
-                                editor.putString("team_color_hex", colorHex);
-                                editor.apply();
-                                
-                                // Update the circle if we're still on step 2
-                                if (currentStep == 1 && teamColorCircle != null) {
-                                    try {
-                                        int color = android.graphics.Color.parseColor(colorHex);
-                                        teamColorCircle.setBackgroundColor(color);
-                                    } catch (Exception e) {
-                                        // Keep fallback color if parsing fails
-                                    }
-                                }
-                            }
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        // Log error but continue with fallback
-                        android.util.Log.e("TutorialDialog", "Error fetching team color", e);
-                    });
-            
-            return null; // Return null to use fallback while async query completes
-        } catch (Exception e) {
-            android.util.Log.e("TutorialDialog", "Error in getTeamColorHex", e);
-            return null;
         }
+        
+        // Fetch from Firebase
+        db.collection("teams")
+                .document(teamId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String teamName = documentSnapshot.getString("name");
+                        String teamColorHex = documentSnapshot.getString("colorHex");
+                        String teamColor = documentSnapshot.getString("color");
+                        
+                        // Cache the team info
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putString("team_name", teamName);
+                        editor.putString("team_color", teamColor);
+                        editor.putString("team_color_hex", teamColorHex);
+                        editor.apply();
+                        
+                        // Update the tutorial content with fetched info
+                        updateStep2ContentWithFetchedInfo(userName, teamName, teamColor, teamColorHex);
+                    } else {
+                        // Team not found, use default values
+                        showDefaultTeamInfo(userName);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("TutorialDialog", "Error fetching team info", e);
+                    // Use default values on error
+                    showDefaultTeamInfo(userName);
+                });
+    }
+    
+    /**
+     * Update step 2 content with fetched team information
+     */
+    private void updateStep2ContentWithFetchedInfo(String userName, String teamName, String teamColor, String teamColorHex) {
+        if (contentTextView == null) return;
+        
+        // Check if we're still on step 2 before updating
+        if (currentStep != 1) return;
+        
+        // Update content with team name
+        try {
+            String step2Content = context.getString(R.string.tutorial_step2_content, teamName != null ? teamName : "Conquérants");
+            contentTextView.setText(step2Content);
+        } catch (Exception e) {
+            // Fallback if string formatting fails
+            contentTextView.setText("Vous faites partie de l'équipe " + (teamName != null ? teamName : "Conquérants") + ".\n\nLes zones sur la carte sont représentées par des points de couleur selon l'équipe qui les contrôle.");
+        }
+        
+        // Set the circle color
+        if (teamColorHex != null && !teamColorHex.isEmpty()) {
+            try {
+                int color = android.graphics.Color.parseColor(teamColorHex);
+                teamColorCircle.setBackgroundColor(color);
+            } catch (Exception e) {
+                // Fallback to default color mapping if hex parsing fails
+                teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+            }
+        } else {
+            // Fallback to default color mapping
+            teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+        }
+    }
+    
+    /**
+     * Show default team info when Firebase fetch fails
+     */
+    private void showDefaultTeamInfo(String userName) {
+        String defaultTeamName = "Conquérants";
+        String defaultTeamColor = "Rouge";
+        String defaultTeamColorHex = null;
+        
+        // Check if we're still on step 2 before updating
+        if (currentStep != 1) return;
+        
+        // Update content with default team name
+        try {
+            String step2Content = context.getString(R.string.tutorial_step2_content, defaultTeamName);
+            contentTextView.setText(step2Content);
+        } catch (Exception e) {
+            // Fallback if string formatting fails
+            contentTextView.setText("Vous faites partie de l'équipe Conquérants.\n\nLes zones sur la carte sont représentées par des points de couleur selon l'équipe qui les contrôle.");
+        }
+        
+        // Set default circle color
+        teamColorCircle.setBackgroundColor(getDefaultTeamColor(defaultTeamColor));
     }
     
     /**
