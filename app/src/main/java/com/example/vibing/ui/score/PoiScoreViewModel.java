@@ -205,22 +205,28 @@ public class PoiScoreViewModel extends ViewModel {
                             
                             // Check if freeze bonus is active
                             boolean freezeBonusActive = (activeFreezeBonus != null && activeFreezeBonus.isActive() && !activeFreezeBonus.isExpired());
+                            
+                            // Check if POI is frozen by timestamp
+                            java.util.Date freezeUntil = document.getDate("freezeUntil");
+                            boolean timestampFreezeActive = (freezeUntil != null && freezeUntil.after(new java.util.Date()));
                              
                              // ALWAYS calculate dynamic score - NEVER use Firebase score directly
                              int decrementedAmount = 0;
                              int dynamicScore = baseScore;
                              
-                             if (!inGracePeriod && !freezeBonusActive) {
+                             if (!inGracePeriod && !freezeBonusActive && !timestampFreezeActive) {
                                  decrementedAmount = (int) (timeElapsed / DECREMENT_RATE_MILLIS);
                                  dynamicScore = Math.max(MIN_SCORE, baseScore - decrementedAmount);
                                  
-                             } else {
-                                 if (freezeBonusActive) {
-                                     android.util.Log.d("POI_SCORE", "FREEZE BONUS ACTIVE: No decrement applied");
-                                 } else {
-                                     android.util.Log.d("POI_SCORE", "IN GRACE PERIOD: No decrement applied, using base score");
-                                 }
-                             }
+} else {
+                                  if (freezeBonusActive) {
+                                      android.util.Log.d("POI_SCORE", "FREEZE BONUS ACTIVE: No decrement applied");
+                                  } else if (timestampFreezeActive) {
+                                      android.util.Log.d("POI_SCORE", "TIMESTAMP FREEZE ACTIVE: No decrement applied until " + freezeUntil);
+                                  } else {
+                                      android.util.Log.d("POI_SCORE", "IN GRACE PERIOD: No decrement applied, using base score");
+                                  }
+                              }
                             
                             // ALWAYS update local score with calculated dynamic score
                             // NEVER display raw Firebase score

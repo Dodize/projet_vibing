@@ -49,6 +49,7 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 | `currentScore` | Number | Points disponibles pour ce POI | 500 |
 | `captureTime` | Timestamp | Date de capture initiale | Timestamp Firebase |
 | `lastUpdated` | Timestamp | Dernière mise à jour du score | Timestamp Firebase |
+| `freezeUntil` | Timestamp/null | Date jusqu'à laquelle le score est gelé | Timestamp Firebase (optionnel) |
 
 **Catégories de POIs disponibles :**
 - Centre-ville historique (Capitole, Place du Capitole, Basilique Saint-Sernin, Couvent des Jacobins, Pont Neuf)
@@ -77,6 +78,7 @@ Cette collection contient tous les points d'intérêt interactifs du jeu, princi
 3. **Système de points** : Chaque POI a un `currentScore` qui peut être gagné par les équipes
 4. **Questions générales** : Les questions QCM sont gérées globalement dans l'application et ne dépendent pas des POIs spécifiques
 5. **Calcul dynamique du score** : Le score des POIs décrémente de 1 point par heure depuis la dernière mise à jour (`lastUpdated`)
-6. **Capture de zone** : Pour capturer une zone, le joueur doit obtenir un score au QCM supérieur au score dynamique actuel de la zone
+6. **Gel temporaire du score** : Si `freezeUntil` est défini et dans le futur, le score du POI ne décrémente pas jusqu'à cette date
+7. **Capture de zone** : Pour capturer une zone, le joueur doit obtenir un score au QCM supérieur au score dynamique actuel de la zone
 7. **Timestamps** : `captureTime` est utilisé pour la capture initiale, `lastUpdated` pour toutes les mises à jour de score
 8. **Visites quotidiennes** : Le champ `visitedPois` dans la collection `users` suit les visites de POI par jour. Un POI ne peut être visité qu'une seule fois par jour par utilisateur. Le format est `[{"poiId": "poi_capitole", "visitDate": "2025-12-14"}]`

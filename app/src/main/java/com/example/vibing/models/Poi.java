@@ -18,6 +18,7 @@ public class Poi {
     private String ownerTeamId;
     private java.util.Date captureTime;
     private java.util.Date lastUpdated;
+    private java.util.Date freezeUntil;
     private List<String> keywords;
     
     // Raw data map for manual extraction
@@ -277,5 +278,20 @@ public class Poi {
     
     public void setKeywords(List<String> keywords) {
         this.keywords = keywords;
+    }
+    
+    public java.util.Date getFreezeUntil() {
+        // Try raw data map first for freezeUntil
+        if (rawData != null && rawData.containsKey("freezeUntil")) {
+            Object freezeObj = rawData.get("freezeUntil");
+            if (freezeObj instanceof java.util.Date) {
+                return (java.util.Date) freezeObj;
+            }
+        }
+        return freezeUntil;
+    }
+    
+    public void setFreezeUntil(java.util.Date freezeUntil) {
+        this.freezeUntil = freezeUntil;
     }
 }
