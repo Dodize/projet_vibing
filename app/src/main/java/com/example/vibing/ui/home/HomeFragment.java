@@ -1189,6 +1189,12 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private void updateMoneyDisplay(int money) {
+        // Check if fragment is still attached and binding is not null
+        if (binding == null || !isAdded() || getContext() == null) {
+            android.util.Log.w("HOME_FRAGMENT", "Fragment not attached or binding is null, skipping UI update");
+            return;
+        }
+        
         TextView moneyTextView = binding.getRoot().findViewById(R.id.money_text_view);
         if (moneyTextView != null) {
             moneyTextView.setText("Argent: " + money + "€");

@@ -38,7 +38,7 @@ Basé sur le Cahier des Charges, voici la liste des tâches à réaliser, regrou
 ## 3.5. Monnaie Virtuelle et Bonus
 - [x] Implémenter l'obtention de monnaie virtuelle via le passage aux POI.
 - [ ] Implémenter l'obtention de monnaie virtuelle via le podomètre (marche).
-- [ ] Implémenter l'utilisation de la monnaie virtuelle pour des bonus (figer score / augmenter score QCM).
+- [x] Implémenter l'utilisation de la monnaie virtuelle pour des bonus (figer score / augmenter score QCM).
 
 ## 4. Exigences Techniques
 - [x] Configurer le projet Android pour utiliser Firebase Firestore comme base de données (architecture *serverless*).
