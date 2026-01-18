@@ -393,11 +393,15 @@ public class TutorialDialog extends Dialog {
             String cachedTeamColorHex = prefs.getString("team_color_hex", null);
             
             if (cachedTeamName != null && cachedTeamColor != null) {
-                // Use cached info immediately
+                // Show cached info immediately
                 updateStep2ContentWithFetchedInfo(userName, cachedTeamName, cachedTeamColor, cachedTeamColorHex);
                 return;
             }
         }
+        
+        // Show loading state
+        contentTextView.setText("Chargement des informations de votre équipe...");
+        setCircleColor(context.getResources().getColor(R.color.light_gray, null));
         
         // Fetch from Firebase
         db.collection("teams")
@@ -452,14 +456,14 @@ public class TutorialDialog extends Dialog {
         if (teamColorHex != null && !teamColorHex.isEmpty()) {
             try {
                 int color = android.graphics.Color.parseColor(teamColorHex);
-                teamColorCircle.setBackgroundColor(color);
+                setCircleColor(color);
             } catch (Exception e) {
                 // Fallback to default color mapping if hex parsing fails
-                teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+                setCircleColor(getDefaultTeamColor(teamColor));
             }
         } else {
             // Fallback to default color mapping
-            teamColorCircle.setBackgroundColor(getDefaultTeamColor(teamColor));
+            setCircleColor(getDefaultTeamColor(teamColor));
         }
     }
     
@@ -484,7 +488,18 @@ public class TutorialDialog extends Dialog {
         }
         
         // Set default circle color
-        teamColorCircle.setBackgroundColor(getDefaultTeamColor(defaultTeamColor));
+        setCircleColor(getDefaultTeamColor(defaultTeamColor));
+    }
+    
+    /**
+     * Set the circle color by creating a new drawable
+     */
+    private void setCircleColor(int color) {
+        android.graphics.drawable.GradientDrawable circle = new android.graphics.drawable.GradientDrawable();
+        circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        circle.setColor(color);
+        circle.setSize(24, 24); // 24dp x 24dp
+        teamColorCircle.setBackground(circle);
     }
     
     /**
