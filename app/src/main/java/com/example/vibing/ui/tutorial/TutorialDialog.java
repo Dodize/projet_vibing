@@ -194,12 +194,6 @@ public class TutorialDialog extends Dialog {
             case 1: // Step 2: Team and POI demonstration
                 // Update content with user's team information
                 updateStep2ContentWithTeamInfo();
-                
-                if (listener != null && poiMarkers != null && !poiMarkers.isEmpty()) {
-                    // Zoom to random POI
-                    Marker randomPoi = poiMarkers.get(random.nextInt(poiMarkers.size()));
-                    listener.onZoomToPoi(randomPoi);
-                }
                 break;
                 
             case 2: // Step 3: Capture mechanics
