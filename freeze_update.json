@@ -1,0 +1,9 @@
+{
+  "pois": {
+    "poi_capitole": {
+      "freezeUntil": {
+        ".sv": "timestamp"
+      }
+    }
+  }
+}

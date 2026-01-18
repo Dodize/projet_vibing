@@ -1,7 +1,7 @@
 package com.example.vibing.models;
 
 public enum BonusType {
-    FREEZE_SCORE("Figer le score", 30, "Empêche le score de la zone de décroître pendant 1 heure"),
+    FREEZE_SCORE("Figer le score", 30, "Empêche le score de la zone de décroître pendant 2 heures"),
     BOOST_SCORE("Augmenter le score", 50, "Ajoute 20 points à votre score pour ce QCM");
 
     private final String displayName;

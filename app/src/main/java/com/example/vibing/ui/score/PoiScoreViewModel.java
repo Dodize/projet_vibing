@@ -26,7 +26,7 @@ public class PoiScoreViewModel extends ViewModel {
     private long lastKnownScoreTime = 0; // Local timestamp for score calculation
     private static final long CAPTURE_GRACE_PERIOD_MILLIS = 30 * 1000; // 30 seconds grace period after capture
     
-    private static final long DECREMENT_RATE_MILLIS = 30 * 1000; // 1 point per 30 seconds (for testing)
+    private static final long DECREMENT_RATE_MILLIS = 60 * 60 * 1000; // 1 point per hour
     private static final int MIN_SCORE = 10;
     
     // Bonus management

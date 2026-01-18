@@ -28,7 +28,7 @@ public class Bonus {
         // Définir la durée selon le type de bonus
         switch (type) {
             case FREEZE_SCORE:
-                this.duration = 3600000; // 1 heure
+                this.duration = 7200000; // 2 heures
                 break;
             case BOOST_SCORE:
                 this.duration = 0; // Bonus instantané
