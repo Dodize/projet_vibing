@@ -98,6 +98,7 @@
                     android:layout_weight="1"
                     android:layout_marginEnd="8dp"
                     android:text="@string/tutorial_previous"
+                    android:textSize="16sp"
                     android:enabled="false" />
 
                 <Button
@@ -107,7 +108,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="8dp"
-                    android:text="@string/tutorial_next" />
+                    android:text="@string/tutorial_next"
+                    android:textSize="16sp" />
 
             </LinearLayout>
 

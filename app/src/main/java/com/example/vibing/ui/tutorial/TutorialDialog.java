@@ -204,14 +204,16 @@ public class TutorialDialog extends Dialog {
     
     private void updateStep2ContentWithTeamInfo() {
         if (context != null) {
-            SharedPreferences prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+            // Utiliser le même nom de SharedPreferences que HomeFragment
+            SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", Context.MODE_PRIVATE);
             String userName = prefs.getString("username", "Joueur");
             String teamName = prefs.getString("team_name", "Conquérants");
             String teamColor = prefs.getString("team_color", "Rouge");
-            
+                        
             // Update step 2 content with actual team information
             String step2Content = context.getString(R.string.tutorial_step2_content, teamName, teamColor);
             contentTextView.setText(step2Content);
+            
         }
     }
 

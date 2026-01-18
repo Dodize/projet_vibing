@@ -1327,7 +1327,7 @@ private void initializeTutorial() {
         navController.navigate(R.id.action_homeFragment_to_poiScoreFragment, bundle);
     }
     
-    private void displayUserInfo() {
+private void displayUserInfo() {
         SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
         String username = prefs.getString("username", "Joueur");
         String teamName = prefs.getString("team_name", "Équipe inconnue");

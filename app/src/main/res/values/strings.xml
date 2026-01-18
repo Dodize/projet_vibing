@@ -24,7 +24,7 @@
     <string name="tutorial_step6_title">Bonne chance !</string>
     
     <!-- Tutorial step contents -->
-    <string name="tutorial_step1_content">Bienvenue dans Vibing !\n\nCe jeu de conquête vous met au défi de posséder les zones de la carte. Affrontez les autres équipes pour contrôler le territoire !</string>
+    <string name="tutorial_step1_content">Ce jeu de conquête vous met au défi de posséder les zones de la carte. Affrontez les autres équipes pour contrôler le territoire !</string>
     <string name="tutorial_step2_content">Vous faites partie de l\'équipe %1$s avec la couleur %2$s.\n\nLes zones sur la carte sont représentées par des points de couleur selon l\'équipe qui les contrôle.</string>
     <string name="tutorial_step3_content">Pour capturer une zone, déplacez-vous vers un POI (Point d\'Intérêt).\n\nDeux choix s\'offrent à vous :\n• Capturer la zone en réussissant plusieurs épreuves\n• Déposer les armes pour obtenir de l\'argent (sans capturer la zone)\n\nLe score de la zone diminue avec le temps. Vous devez le battre pour capturer !</string>
     <string name="tutorial_step4_content">Pour capturer une zone :\n\n1. Prenez une photo du POI pour valider votre arrivée\n2. Répondez à un quiz\n3. Obtenez suffisamment de points pour capturer la zone</string>
