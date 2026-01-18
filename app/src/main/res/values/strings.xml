@@ -11,7 +11,6 @@
     <!-- Tutorial strings -->
     <string name="tutorial_button_content_description">Tutoriel</string>
     <string name="tutorial_close">Fermer le tutoriel</string>
-    <string name="tutorial_illustration">Illustration du tutoriel</string>
     <string name="tutorial_previous">Précédent</string>
     <string name="tutorial_next">Suivant</string>
     <string name="tutorial_finish">Terminer</string>
