@@ -5,13 +5,46 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <TextView
+<TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Options de bonus disponibles:"
         android:textSize="16sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
+
+    <!-- Money and Score Display -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@android:color/background_light"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/text_money_display"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Argent: 100€"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_green_dark"
+            android:gravity="start" />
+
+        <TextView
+            android:id="@+id/text_score_display"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Score: 15"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:gravity="end" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -45,7 +78,7 @@
         android:id="@+id/button_continue"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Continuer sans bonus"
+        android:text="Continuer"
         android:textSize="14sp"
         android:backgroundTint="@android:color/darker_gray" />
 

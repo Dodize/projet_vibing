@@ -17,12 +17,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+
+
     <!-- Carte infos utilisateur (overlay haut) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/user_info_card"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="8dp"
         app:cardBackgroundColor="?android:attr/colorBackground"
@@ -30,29 +35,65 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
+<LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
             
-
-            <TextView
-                android:id="@+id/username_text_view"
-                android:layout_width="wrap_content"
+            <!-- Layout horizontal pour username et tutorial button -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Nom d'utilisateur"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                
+                <TextView
+                    android:id="@+id/username_text_view"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Nom d'utilisateur"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:textColor="?android:attr/textColorPrimary" />
+                
+                <!-- Tutorial button aligné avec le username -->
+                <ImageButton
+                    android:id="@+id/tutorial_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_tutorial"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/tutorial_button_content_description" />
+                    
+            </LinearLayout>
 
-            <TextView
-                android:id="@+id/team_text_view"
+            <!-- Layout pour le nom de l'équipe avec cercle de couleur -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Équipe"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="?android:attr/textColorSecondary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/team_text_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Équipe"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+                <!-- Cercle de couleur de l'équipe -->
+                <View
+                    android:id="@+id/team_color_circle"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/team_color_circle" />
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/money_text_view"
@@ -68,8 +109,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textColor="@android:color/white"
-                android:textSize="14sp" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?android:attr/textColorSecondary" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

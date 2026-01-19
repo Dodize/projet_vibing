@@ -39,6 +39,7 @@ import com.example.vibing.models.BonusType;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
 import com.example.vibing.ui.camera.CameraCaptureFragment;
+import com.example.vibing.ui.quiz.QuizResultDialog;
 
 import androidx.fragment.app.FragmentResultListener;
 import java.util.ArrayList;
@@ -78,6 +79,9 @@ public class PoiScoreFragment extends Fragment {
     private Bonus activeFreezeBonus = null;
     private Bonus activeBoostBonus = null;
     private int userMoney = 0;
+    
+    // Store current zone score for result dialog
+    private int currentZoneScore = 100; // Default value
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -247,26 +251,14 @@ public class PoiScoreFragment extends Fragment {
         if (command.contains("je dépose les armes")) {
             poiScoreViewModel.addMoneyBonus(25, requireContext()); // Bonus de 25€ pour déposer les armes
             recordPoiVisit(); // Enregistrer la visite du POI
-            Toast.makeText(getContext(), "Commande reconnue: Je dépose les armes - Bonus de 25€ ajouté!", Toast.LENGTH_LONG).show();
             
-            // Retourner à la carte après le bonus pour éviter les actions multiples
-            new android.os.Handler().postDelayed(() -> {
-                if (isAdded() && getView() != null) {
-                    try {
-                        NavController navController = Navigation.findNavController(requireView());
-                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
-                    } catch (IllegalStateException e) {
-                        Log.w("PoiScoreFragment", "Fragment not attached to activity, skipping navigation");
-                    }
-                }
-            }, 2000); // 2 secondes de délai
+            // Show surrender dialog
+            showSurrenderDialog();
+
         } else if (command.contains("je capture la zone")) {
-            Log.i("PoiScoreFragment", "Command: je capture la zone - starting with photo recognition");
+            Log.i("PoiScoreFragment", "Command: je capture la zone - calling navigateToCameraCapture()");
             Toast.makeText(getContext(), "Commande reconnue: Je capture la zone", Toast.LENGTH_SHORT).show();
             navigateToCameraCapture();
-        } else {
-            Log.i("PoiScoreFragment", "Commande non reconnue: " + command);
-            Toast.makeText(getContext(), "Commande non reconnue: " + command, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -487,10 +479,22 @@ public class PoiScoreFragment extends Fragment {
             // Enregistrer la visite du POI (que ce soit succès ou échec)
             recordPoiVisit();
             
-            // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
-            boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
+            // Get current zone score for dialog
+            currentZoneScore = poiScoreViewModel.getCurrentScore().getValue() != null ? 
+                poiScoreViewModel.getCurrentScore().getValue() : 100;
             
-            // Show bonus options dialog after quiz completion
+            // Calculate win condition locally (database update will happen on Continue click)
+            boolean playerWon = quizScore > currentZoneScore;
+            
+            // Apply penalty if player lost
+            if (!playerWon) {
+                userMoney -= 10; // Pénalité de 10€ pour échec au quiz
+                poiScoreViewModel.setMoney(userMoney);
+                poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
+            }
+            
+            // Show appropriate dialog based on result
+            // Show bonus options dialog after quiz completion, which will then show quiz result dialog
             showBonusOptionsDialog(quizScore, playerWon);
             
         } catch (Exception e) {
@@ -501,13 +505,92 @@ public class PoiScoreFragment extends Fragment {
         }
     }
     
+    private int getCurrentZoneScore() {
+        // Use the stored current zone score
+        return currentZoneScore;
+    }
+
+    private void showQuizResultDialog(boolean playerWon, int quizScore, int zoneScore) {
+        QuizResultDialog.ResultType resultType = playerWon ? 
+            QuizResultDialog.ResultType.SUCCESS : 
+            QuizResultDialog.ResultType.FAILURE;
+        
+        QuizResultDialog dialog = QuizResultDialog.newInstance(
+            poiName,
+            resultType,
+            userTeamId,
+            quizScore,
+            zoneScore
+        );
+        
+        dialog.setQuizResultListener(new QuizResultDialog.QuizResultListener() {
+            @Override
+            public void onDialogClosed() {
+                // Navigate back to main page after dialog closes
+                navigateBackToHome();
+            }
+        });
+        
+        dialog.show(getParentFragmentManager(), "QuizResultDialog");
+    }
+    
+    private void showSurrenderDialog() {
+        QuizResultDialog dialog = QuizResultDialog.newInstance(
+            poiName,
+            QuizResultDialog.ResultType.SURRENDER,
+            userTeamId,
+            0,
+            0
+        );
+        
+        dialog.setQuizResultListener(new QuizResultDialog.QuizResultListener() {
+            @Override
+            public void onDialogClosed() {
+                // Retourner à la carte après le bonus pour éviter les actions multiples
+                new android.os.Handler().postDelayed(() -> {
+                    if (isAdded() && getView() != null) {
+                        try {
+                            NavController navController = Navigation.findNavController(requireView());
+                            navController.navigateUp(); // Retour à la page principale pour recharger la carte
+                        } catch (IllegalStateException e) {
+                            Log.w("PoiScoreFragment", "Fragment not attached to activity, skipping navigation");
+                        }
+                    }
+                }, 2000); // 2 secondes de délai
+            }
+        });
+        
+        dialog.show(getParentFragmentManager(), "QuizResultDialog");
+    }
+    
+    /**
+     * Interface for handling bonus dialog completion
+     */
+    private interface BonusDialogCallback {
+        void onBonusDialogCompleted(int finalQuizScore, boolean finalPlayerWon);
+    }
+
     private void showBonusOptionsDialog(int quizScore, boolean playerWon) {
+        showBonusOptionsDialog(quizScore, playerWon, new BonusDialogCallback() {
+            @Override
+            public void onBonusDialogCompleted(int finalQuizScore, boolean finalPlayerWon) {
+                // Show quiz result dialog after bonus dialog is completed
+                showQuizResultDialog(finalPlayerWon, finalQuizScore, getCurrentZoneScore());
+            }
+        });
+    }
+
+    private void showBonusOptionsDialog(int initialQuizScore, boolean initialPlayerWon, BonusDialogCallback callback) {
+        // Use mutable containers for score and win status to modify in listeners
+        final int[] currentQuizScore = {initialQuizScore};
+        final boolean[] currentPlayerWon = {initialPlayerWon};
+        
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Résultat du QCM");
         
-        String message = playerWon 
-            ? "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!"
-            : "Dommage! Votre score de " + quizScore + " n'est pas suffisant pour capturer la zone.";
+        String message = currentPlayerWon[0] 
+            ? "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + currentQuizScore[0] + "!"
+            : "Dommage! Votre score de " + currentQuizScore[0] + " n'est pas suffisant pour capturer la zone.";
         
         builder.setMessage(message + "\n\nVoulez-vous utiliser un bonus?");
         
@@ -519,7 +602,27 @@ public class PoiScoreFragment extends Fragment {
         Button boostButton = bonusView.findViewById(R.id.button_boost_bonus);
         Button continueButton = bonusView.findViewById(R.id.button_continue);
         
+        // Money and Score display TextViews
+        TextView moneyDisplay = bonusView.findViewById(R.id.text_money_display);
+        TextView scoreDisplay = bonusView.findViewById(R.id.text_score_display);
+        
         AlertDialog dialog = builder.create();
+        
+        // Method to update displays
+        Runnable updateDisplays = new Runnable() {
+            @Override
+            public void run() {
+                if (moneyDisplay != null) {
+                    moneyDisplay.setText("Argent: " + userMoney + "€");
+                }
+                if (scoreDisplay != null) {
+                    scoreDisplay.setText("Score: " + currentQuizScore[0]);
+                }
+            }
+        };
+        
+        // Initial display update
+        updateDisplays.run();
         
         freezeButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.FREEZE_SCORE.getCost()) {
@@ -530,7 +633,10 @@ public class PoiScoreFragment extends Fragment {
                     poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                     
                     showBonusConfirmationDialog("Score figé!", "Le score de la zone a été figé pendant 1 heure.");
-                    freezeButton.setEnabled(false);
+                    freezeButton.setEnabled(false); // Freeze bonus ne peut être utilisé qu'une fois
+                    
+                    // Update displays
+                    updateDisplays.run();
                 } else {
                     Toast.makeText(getContext(), "Bonus déjà actif!", Toast.LENGTH_SHORT).show();
                 }
@@ -541,21 +647,28 @@ public class PoiScoreFragment extends Fragment {
         
         boostButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.BOOST_SCORE.getCost()) {
-                int newScore = quizScore + 5;
+                int newScore = currentQuizScore[0] + 5;
                 userMoney -= BonusType.BOOST_SCORE.getCost();
                 poiScoreViewModel.setMoney(userMoney);
                 poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                 
-                showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + quizScore + " à " + newScore + ".");
+                showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + currentQuizScore[0] + " à " + newScore + ".");
                 
-                // Re-evaluate the result with boosted score
-                boolean playerWonWithBoost = poiScoreViewModel.handleQcmResult(newScore, userTeamId);
-                if (playerWonWithBoost && !playerWon) {
-                    // Player now wins with the boost
+                // Calculate if player would win with boosted score (without updating database yet)
+                boolean playerWonWithBoost = newScore > currentZoneScore;
+                if (playerWonWithBoost && !currentPlayerWon[0]) {
+                    // Player now wins with the boost (will be recorded when clicking Continue)
                     poiOwningTeam = userTeamId;
                 }
                 
-                boostButton.setEnabled(false);
+                // Update score for potential future use
+                currentQuizScore[0] = newScore;
+                currentPlayerWon[0] = playerWonWithBoost;
+                
+                // Update displays
+                updateDisplays.run();
+                
+                // Ne désactive PAS le bouton boost - l'utilisateur peut l'utiliser plusieurs fois
             } else {
                 Toast.makeText(getContext(), "Argent insuffisant!", Toast.LENGTH_SHORT).show();
             }
@@ -563,7 +676,15 @@ public class PoiScoreFragment extends Fragment {
         
         continueButton.setOnClickListener(v -> {
             dialog.dismiss();
-            navigateBackToHome();
+            
+            // Only update database if zone is captured with final score
+            if (currentPlayerWon[0]) {
+                android.util.Log.d("POI_SCORE", "Capturing zone with final score: " + currentQuizScore[0]);
+                poiScoreViewModel.handleQcmResult(currentQuizScore[0], userTeamId);
+            }
+            
+            // Proceed to quiz result with final scores
+            callback.onBonusDialogCompleted(currentQuizScore[0], currentPlayerWon[0]);
         });
         
         dialog.show();
