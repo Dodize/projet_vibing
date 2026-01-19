@@ -593,7 +593,27 @@ public class PoiScoreFragment extends Fragment {
         Button boostButton = bonusView.findViewById(R.id.button_boost_bonus);
         Button continueButton = bonusView.findViewById(R.id.button_continue);
         
+        // Money and Score display TextViews
+        TextView moneyDisplay = bonusView.findViewById(R.id.text_money_display);
+        TextView scoreDisplay = bonusView.findViewById(R.id.text_score_display);
+        
         AlertDialog dialog = builder.create();
+        
+        // Method to update displays
+        Runnable updateDisplays = new Runnable() {
+            @Override
+            public void run() {
+                if (moneyDisplay != null) {
+                    moneyDisplay.setText("Argent: " + userMoney + "€");
+                }
+                if (scoreDisplay != null) {
+                    scoreDisplay.setText("Score: " + currentQuizScore[0]);
+                }
+            }
+        };
+        
+        // Initial display update
+        updateDisplays.run();
         
         freezeButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.FREEZE_SCORE.getCost()) {
@@ -605,6 +625,9 @@ public class PoiScoreFragment extends Fragment {
                     
                     showBonusConfirmationDialog("Score figé!", "Le score de la zone a été figé pendant 1 heure.");
                     freezeButton.setEnabled(false); // Freeze bonus ne peut être utilisé qu'une fois
+                    
+                    // Update displays
+                    updateDisplays.run();
                 } else {
                     Toast.makeText(getContext(), "Bonus déjà actif!", Toast.LENGTH_SHORT).show();
                 }
@@ -632,6 +655,9 @@ public class PoiScoreFragment extends Fragment {
                 // Update score for potential future use
                 currentQuizScore[0] = newScore;
                 currentPlayerWon[0] = playerWonWithBoost;
+                
+                // Update displays
+                updateDisplays.run();
                 
                 // Ne désactive PAS le bouton boost - l'utilisateur peut l'utiliser plusieurs fois
             } else {
