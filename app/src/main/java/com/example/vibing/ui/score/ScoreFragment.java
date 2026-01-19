@@ -429,8 +429,14 @@ public class ScoreFragment extends Fragment {
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             // Handle back button click
-            NavController navController = Navigation.findNavController(requireView());
-            navController.navigateUp();
+            if (isAdded() && getView() != null) {
+                try {
+                    NavController navController = Navigation.findNavController(requireView());
+                    navController.navigateUp();
+                } catch (IllegalStateException e) {
+                    Log.w("ScoreFragment", "Fragment not attached to activity, skipping navigation");
+                }
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);

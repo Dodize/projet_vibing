@@ -1241,6 +1241,11 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private void displayUserInfo() {
+        if (binding == null || !isAdded() || getContext() == null) {
+            android.util.Log.w("HOME_FRAGMENT", "Fragment not attached or binding is null, skipping UI update");
+            return;
+        }
+        
         SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
         String username = prefs.getString("username", "Joueur");
         String teamName = prefs.getString("team_name", "Équipe inconnue");
@@ -1427,6 +1432,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     }
     
     private void updateWalkingDisplay() {
+        if (binding == null || !isAdded()) {
+            return;
+        }
         TextView walkingTextView = binding.getRoot().findViewById(R.id.walking_text_view);
         if (walkingTextView != null) {
             int currentModulo = currentSteps % STEPS_PER_EURO;
@@ -1718,6 +1726,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
     
     // Setup easter egg on username text view
     private void setupAdminEasterEgg() {
+        if (binding == null || !isAdded()) {
+            return;
+        }
         TextView usernameTextView = binding.usernameTextView;
         if (usernameTextView != null) {
             usernameTextView.setOnClickListener(v -> {

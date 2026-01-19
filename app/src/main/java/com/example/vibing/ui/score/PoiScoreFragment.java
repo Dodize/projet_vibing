@@ -251,8 +251,14 @@ public class PoiScoreFragment extends Fragment {
             
             // Retourner à la carte après le bonus pour éviter les actions multiples
             new android.os.Handler().postDelayed(() -> {
-                NavController navController = Navigation.findNavController(requireView());
-                navController.navigateUp(); // Retour à la page principale pour recharger la carte
+                if (isAdded() && getView() != null) {
+                    try {
+                        NavController navController = Navigation.findNavController(requireView());
+                        navController.navigateUp(); // Retour à la page principale pour recharger la carte
+                    } catch (IllegalStateException e) {
+                        Log.w("PoiScoreFragment", "Fragment not attached to activity, skipping navigation");
+                    }
+                }
             }, 2000); // 2 secondes de délai
         } else if (command.contains("je capture la zone")) {
             Log.i("PoiScoreFragment", "Command: je capture la zone - starting with photo recognition");
@@ -572,8 +578,14 @@ public class PoiScoreFragment extends Fragment {
     }
     
     private void navigateBackToHome() {
-        NavController navController = Navigation.findNavController(requireView());
-        navController.navigateUp(); // Retour à la page principale
+        if (isAdded() && getView() != null) {
+            try {
+                NavController navController = Navigation.findNavController(requireView());
+                navController.navigateUp(); // Retour à la page principale
+            } catch (IllegalStateException e) {
+                Log.w("PoiScoreFragment", "Fragment not attached to activity, skipping navigation");
+            }
+        }
     }
 
     // Helper methods for API questions
@@ -631,6 +643,11 @@ public class PoiScoreFragment extends Fragment {
     
     private void navigateToCameraCapture() {
         try {
+            if (!isAdded() || getView() == null) {
+                Log.w("PoiScoreFragment", "Fragment not attached, cannot navigate to camera");
+                return;
+            }
+            
             // Create camera capture fragment with POI data
             CameraCaptureFragment cameraFragment = CameraCaptureFragment.newInstance(poiName, poiId);
             
@@ -788,8 +805,14 @@ public class PoiScoreFragment extends Fragment {
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             // Handle back button click
-            NavController navController = Navigation.findNavController(requireView());
-            navController.navigateUp();
+            if (isAdded() && getView() != null) {
+                try {
+                    NavController navController = Navigation.findNavController(requireView());
+                    navController.navigateUp();
+                } catch (IllegalStateException e) {
+                    Log.w("PoiScoreFragment", "Fragment not attached to activity, skipping navigation");
+                }
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
