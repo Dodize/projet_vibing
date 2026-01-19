@@ -1041,7 +1041,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         AlertDialog[] dialogRef = new AlertDialog[1]; // Array to hold dialog reference
         
-if (eligiblePois.size() == 1) {
+        if (eligiblePois.size() == 1) {
             // Single POI entered
             PoiItem poi = eligiblePois.get(0);
             builder.setTitle("🎯 Zone de POI détectée!")
@@ -1122,15 +1122,7 @@ if (eligiblePois.size() == 1) {
                   .setView(layout);
         }
              
-             builder.setTitle("🎯 Plusieurs zones de POI détectées!")
-                   .setView(layout);
-         }
-            
-            builder.setTitle("🎯 Plusieurs zones de POI détectées!")
-                  .setView(layout);
-        }
-        
-builder.setNegativeButton("Plus tard", (dialog, which) -> {
+        builder.setNegativeButton("Plus tard", (dialog, which) -> {
             dialog.dismiss();
         });
         
