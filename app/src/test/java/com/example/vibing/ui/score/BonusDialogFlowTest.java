@@ -39,7 +39,7 @@ public class BonusDialogFlowTest {
     public void testBoostBonusChangesWinCondition() {
         // Given: User initially loses (score < zone score)
         int initialScore = 15;
-        int zoneScore = 20;
+        int zoneScore = 19; // Changed so that 15 + 5 > 19
         boolean initiallyWon = initialScore > zoneScore;
         
         // When: User uses boost bonus (+5 points from BonusType.BOOST_SCORE)
@@ -130,10 +130,10 @@ public class BonusDialogFlowTest {
     public void testCompleteFlowLogic() {
         // This test simulates the complete flow logic without UI
         
-        // Scenario: User scores 15, zone requires 20, has 100 money
+        // Scenario: User scores 15, zone requires 19, has 100 money
         
         int quizScore = 15;
-        int zoneScore = 20;
+        int zoneScore = 19;
         int money = 100;
         boolean playerWon = quizScore > zoneScore; // false
         

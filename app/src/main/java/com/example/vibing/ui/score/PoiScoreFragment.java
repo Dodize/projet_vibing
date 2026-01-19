@@ -571,13 +571,17 @@ public class PoiScoreFragment extends Fragment {
         });
     }
 
-    private void showBonusOptionsDialog(int quizScore, boolean playerWon, BonusDialogCallback callback) {
+    private void showBonusOptionsDialog(int initialQuizScore, boolean initialPlayerWon, BonusDialogCallback callback) {
+        // Use mutable containers for score and win status to modify in listeners
+        final int[] currentQuizScore = {initialQuizScore};
+        final boolean[] currentPlayerWon = {initialPlayerWon};
+        
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Résultat du QCM");
         
-        String message = playerWon 
-            ? "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!"
-            : "Dommage! Votre score de " + quizScore + " n'est pas suffisant pour capturer la zone.";
+        String message = currentPlayerWon[0] 
+            ? "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + currentQuizScore[0] + "!"
+            : "Dommage! Votre score de " + currentQuizScore[0] + " n'est pas suffisant pour capturer la zone.";
         
         builder.setMessage(message + "\n\nVoulez-vous utiliser un bonus?");
         
@@ -600,13 +604,7 @@ public class PoiScoreFragment extends Fragment {
                     poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                     
                     showBonusConfirmationDialog("Score figé!", "Le score de la zone a été figé pendant 1 heure.");
-                    freezeButton.setEnabled(false);
-                    
-                    // Show confirmation and then proceed to quiz result after delay
-                    new android.os.Handler().postDelayed(() -> {
-                        dialog.dismiss();
-                        callback.onBonusDialogCompleted(quizScore, playerWon);
-                    }, 2000);
+                    freezeButton.setEnabled(false); // Freeze bonus ne peut être utilisé qu'une fois
                 } else {
                     Toast.makeText(getContext(), "Bonus déjà actif!", Toast.LENGTH_SHORT).show();
                 }
@@ -617,27 +615,25 @@ public class PoiScoreFragment extends Fragment {
         
         boostButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.BOOST_SCORE.getCost()) {
-                int newScore = quizScore + 5;
+                int newScore = currentQuizScore[0] + 5;
                 userMoney -= BonusType.BOOST_SCORE.getCost();
                 poiScoreViewModel.setMoney(userMoney);
                 poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                 
-                showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + quizScore + " à " + newScore + ".");
+                showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + currentQuizScore[0] + " à " + newScore + ".");
                 
                 // Re-evaluate the result with boosted score
                 boolean playerWonWithBoost = poiScoreViewModel.handleQcmResult(newScore, userTeamId);
-                if (playerWonWithBoost && !playerWon) {
+                if (playerWonWithBoost && !currentPlayerWon[0]) {
                     // Player now wins with the boost
                     poiOwningTeam = userTeamId;
                 }
                 
-                boostButton.setEnabled(false);
+                // Update score for potential future use
+                currentQuizScore[0] = newScore;
+                currentPlayerWon[0] = playerWonWithBoost;
                 
-                // Show confirmation and then proceed to quiz result with updated score after delay
-                new android.os.Handler().postDelayed(() -> {
-                    dialog.dismiss();
-                    callback.onBonusDialogCompleted(newScore, playerWonWithBoost);
-                }, 2000);
+                // Ne désactive PAS le bouton boost - l'utilisateur peut l'utiliser plusieurs fois
             } else {
                 Toast.makeText(getContext(), "Argent insuffisant!", Toast.LENGTH_SHORT).show();
             }
@@ -645,8 +641,8 @@ public class PoiScoreFragment extends Fragment {
         
         continueButton.setOnClickListener(v -> {
             dialog.dismiss();
-            // Proceed to quiz result without any bonus
-            callback.onBonusDialogCompleted(quizScore, playerWon);
+            // Proceed to quiz result with final scores (may have been modified by bonuses)
+            callback.onBonusDialogCompleted(currentQuizScore[0], currentPlayerWon[0]);
         });
         
         dialog.show();
