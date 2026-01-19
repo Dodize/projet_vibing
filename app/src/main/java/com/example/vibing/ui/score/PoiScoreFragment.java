@@ -482,8 +482,8 @@ public class PoiScoreFragment extends Fragment {
             currentZoneScore = poiScoreViewModel.getCurrentScore().getValue() != null ? 
                 poiScoreViewModel.getCurrentScore().getValue() : 100;
             
-            // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
-            boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
+            // Calculate win condition locally (database update will happen on Continue click)
+            boolean playerWon = quizScore > currentZoneScore;
             
             // Apply penalty if player lost
             if (!playerWon) {
@@ -622,10 +622,10 @@ public class PoiScoreFragment extends Fragment {
                 
                 showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + currentQuizScore[0] + " à " + newScore + ".");
                 
-                // Re-evaluate the result with boosted score
-                boolean playerWonWithBoost = poiScoreViewModel.handleQcmResult(newScore, userTeamId);
+                // Calculate if player would win with boosted score (without updating database yet)
+                boolean playerWonWithBoost = newScore > currentZoneScore;
                 if (playerWonWithBoost && !currentPlayerWon[0]) {
-                    // Player now wins with the boost
+                    // Player now wins with the boost (will be recorded when clicking Continue)
                     poiOwningTeam = userTeamId;
                 }
                 
@@ -641,7 +641,14 @@ public class PoiScoreFragment extends Fragment {
         
         continueButton.setOnClickListener(v -> {
             dialog.dismiss();
-            // Proceed to quiz result with final scores (may have been modified by bonuses)
+            
+            // Only update database if zone is captured with final score
+            if (currentPlayerWon[0]) {
+                android.util.Log.d("POI_SCORE", "Capturing zone with final score: " + currentQuizScore[0]);
+                poiScoreViewModel.handleQcmResult(currentQuizScore[0], userTeamId);
+            }
+            
+            // Proceed to quiz result with final scores
             callback.onBonusDialogCompleted(currentQuizScore[0], currentPlayerWon[0]);
         });
         
