@@ -557,6 +557,7 @@ public class PoiScoreFragment extends Fragment {
                         }
                     }
                 }, 2000); // 2 secondes de délai
+            }
         });
         
         dialog.show(getParentFragmentManager(), "QuizResultDialog");
