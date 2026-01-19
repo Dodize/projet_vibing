@@ -78,7 +78,7 @@
         android:id="@+id/button_continue"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Continuer sans bonus"
+        android:text="Continuer"
         android:textSize="14sp"
         android:backgroundTint="@android:color/darker_gray" />
 
