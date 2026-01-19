@@ -34,6 +34,8 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import com.example.vibing.models.Poi;
 import com.example.vibing.models.QuizQuestion;
+import com.example.vibing.models.Bonus;
+import com.example.vibing.models.BonusType;
 import com.example.vibing.repository.QuizRepository;
 import com.example.vibing.ui.score.ScoreViewModel;
 import com.example.vibing.ui.camera.CameraCaptureFragment;
@@ -72,6 +74,11 @@ public class PoiScoreFragment extends Fragment {
     private int poiScore;
     private String poiOwningTeam;
     private String userTeamId; // Current user's team
+    
+    // Bonus management
+    private Bonus activeFreezeBonus = null;
+    private Bonus activeBoostBonus = null;
+    private int userMoney = 0;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -108,6 +115,13 @@ public class PoiScoreFragment extends Fragment {
         
         // Load user money from Firebase
         poiScoreViewModel.loadUserMoneyFromFirebase(requireContext());
+        
+        // Observe user money changes
+        poiScoreViewModel.getMoneyScore().observe(getViewLifecycleOwner(), money -> {
+            if (money != null) {
+                userMoney = money;
+            }
+        });
         
         // Get POI data from arguments
         Bundle args = getArguments();
@@ -166,8 +180,6 @@ public class PoiScoreFragment extends Fragment {
                 moneyTextView.setText("Argent: " + (money != null ? money : 0) + "€");
             }
         });
-
-
 
         Button recordVoiceButton = binding.buttonRecordVoice;
         recordVoiceButton.setOnClickListener(v -> startVoiceRecognition());
@@ -343,8 +355,6 @@ public class PoiScoreFragment extends Fragment {
         }
     }
     
-
-    
     private void showApiQuestionDialogOnUiThread(List<QuizQuestion> questions, int currentQuestionIndex, int currentScore) {
         Log.i("PoiScoreFragment", "showApiQuestionDialogOnUiThread() called");
         
@@ -473,11 +483,14 @@ public class PoiScoreFragment extends Fragment {
             boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
             
             // Show appropriate dialog based on result
-            showQuizResultDialog(playerWon, quizScore, currentZoneScore);
+            // showQuizResultDialog(playerWon, quizScore, currentZoneScore);
+            // Show bonus options dialog after quiz completion
+            showBonusOptionsDialog(quizScore, playerWon);
+            
         } catch (Exception e) {
-            android.util.Log.e("POI_SCORE", "Error in checkQuizResult: " + e.getMessage());
+            android.util.Log.e("POI_SCORE", "Error in checkQuizResult", e);
             if (getContext() != null) {
-                Toast.makeText(getContext(), "Une erreur est survenue lors du traitement du quiz", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Une erreur est survenue lors du traitement du résultat", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -526,6 +539,87 @@ public class PoiScoreFragment extends Fragment {
         });
         
         dialog.show(getParentFragmentManager(), "QuizResultDialog");
+    }
+    
+    private void showBonusOptionsDialog(int quizScore, boolean playerWon) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Résultat du QCM");
+        
+        String message = playerWon 
+            ? "Félicitations! Vous avez capturé la zone " + (poiName != null ? poiName : "inconnue") + " avec un score de " + quizScore + "!"
+            : "Dommage! Votre score de " + quizScore + " n'est pas suffisant pour capturer la zone.";
+        
+        builder.setMessage(message + "\n\nVoulez-vous utiliser un bonus?");
+        
+        // Create custom layout for bonus options
+        View bonusView = getLayoutInflater().inflate(R.layout.bonus_options_dialog, null);
+        builder.setView(bonusView);
+        
+        Button freezeButton = bonusView.findViewById(R.id.button_freeze_bonus);
+        Button boostButton = bonusView.findViewById(R.id.button_boost_bonus);
+        Button continueButton = bonusView.findViewById(R.id.button_continue);
+        
+        AlertDialog dialog = builder.create();
+        
+        freezeButton.setOnClickListener(v -> {
+            if (userMoney >= BonusType.FREEZE_SCORE.getCost()) {
+                if (!poiScoreViewModel.isFreezeBonusActive()) {
+                    poiScoreViewModel.activateFreezeBonus();
+                    userMoney -= BonusType.FREEZE_SCORE.getCost();
+                    poiScoreViewModel.setMoney(userMoney);
+                    poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
+                    
+                    showBonusConfirmationDialog("Score figé!", "Le score de la zone a été figé pendant 1 heure.");
+                    freezeButton.setEnabled(false);
+                } else {
+                    Toast.makeText(getContext(), "Bonus déjà actif!", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(getContext(), "Argent insuffisant!", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        boostButton.setOnClickListener(v -> {
+            if (userMoney >= BonusType.BOOST_SCORE.getCost()) {
+                int newScore = quizScore + 5;
+                userMoney -= BonusType.BOOST_SCORE.getCost();
+                poiScoreViewModel.setMoney(userMoney);
+                poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
+                
+                showBonusConfirmationDialog("Score augmenté!", "Votre score est passé de " + quizScore + " à " + newScore + ".");
+                
+                // Re-evaluate the result with boosted score
+                boolean playerWonWithBoost = poiScoreViewModel.handleQcmResult(newScore, userTeamId);
+                if (playerWonWithBoost && !playerWon) {
+                    // Player now wins with the boost
+                    poiOwningTeam = userTeamId;
+                }
+                
+                boostButton.setEnabled(false);
+            } else {
+                Toast.makeText(getContext(), "Argent insuffisant!", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        continueButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            navigateBackToHome();
+        });
+        
+        dialog.show();
+    }
+    
+    private void showBonusConfirmationDialog(String title, String message) {
+        new AlertDialog.Builder(getContext())
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show();
+    }
+    
+    private void navigateBackToHome() {
+        NavController navController = Navigation.findNavController(requireView());
+        navController.navigateUp(); // Retour à la page principale
     }
 
     // Helper methods for API questions
@@ -622,7 +716,7 @@ public class PoiScoreFragment extends Fragment {
                                 visitedPois = new ArrayList<>();
                             }
                             
-// Check if POI already exists and update visit date, or add new visit
+                            // Check if POI already exists and update visit date, or add new visit
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                             String today = dateFormat.format(new Date());
                             
@@ -650,7 +744,7 @@ public class PoiScoreFragment extends Fragment {
                                 visit.put("visitDate", today);
                                 visitedPois.add(visit);
                             }
-                                                        
+                                                         
                             // Update Firebase
                             db.collection("users").document(userId)
                                 .update("visitedPois", visitedPois);
@@ -685,11 +779,6 @@ public class PoiScoreFragment extends Fragment {
             return "Zone neutre";
         }
     }
-    
-
-
-    
-    
     
     private void updateDisplayText(Integer score, Integer team) {        
         if (getContext() == null || binding == null || binding.textScore == null) {
@@ -760,8 +849,6 @@ public class PoiScoreFragment extends Fragment {
         teamNamesCache.put(3, "Les Stratèges");
         teamNamesCache.put(4, "Les Gardiens");
         
-
-        
         // Load real team names and colors from Firebase and update cache
         try {
             FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -813,11 +900,11 @@ public class PoiScoreFragment extends Fragment {
                     android.util.Log.e("TEAM_DEBUG", "Firebase query failed");
                 });
         } catch (Exception e) {
-
+            android.util.Log.e("TEAM_DEBUG", "Exception in initializeTeamNamesCache", e);
         }
     }
     
-private String getTeamNameFromCache(String teamId) {
+    private String getTeamNameFromCache(String teamId) {
         // First try to get from cache (convert to int for cache lookup)
         int teamNumber = 0;
         if (teamId != null && teamId.startsWith("team_")) {
