@@ -1039,8 +1039,9 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
         }
         
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        AlertDialog[] dialogRef = new AlertDialog[1]; // Array to hold dialog reference
         
-        if (eligiblePois.size() == 1) {
+if (eligiblePois.size() == 1) {
             // Single POI entered
             PoiItem poi = eligiblePois.get(0);
             builder.setTitle("🎯 Zone de POI détectée!")
@@ -1052,34 +1053,91 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener {
             });
             
         } else {
-            // Multiple POIs entered
-            StringBuilder message = new StringBuilder("Vous êtes dans la zone de plusieurs POIs !\n\n");
+            // Multiple POIs entered - create custom layout with clickable POI items
+            android.util.Log.d("POI_VISIT_DEBUG", "POPUP Creating custom layout with size: " + eligiblePois.size());
+            
+            // Create custom layout
+            LinearLayout layout = new LinearLayout(getContext());
+            layout.setOrientation(LinearLayout.VERTICAL);
+            layout.setPadding(50, 40, 50, 20);
+            
+            // Add title text
+            TextView titleText = new TextView(getContext());
+            titleText.setText("Vous êtes dans la zone de plusieurs POIs !\n\nChoisissez celui que vous voulez capturer :");
+            titleText.setTextSize(16);
+            titleText.setPadding(0, 0, 0, 30);
+            layout.addView(titleText);
+            
+            // Create clickable views for each POI
             for (int i = 0; i < eligiblePois.size(); i++) {
                 PoiItem poi = eligiblePois.get(i);
-                message.append((i + 1)).append(". ").append(poi.name)
-                       .append(" (Score: ").append(poi.score).append(")\n");
+                
+                // Create container for this POI
+                LinearLayout poiContainer = new LinearLayout(getContext());
+                poiContainer.setOrientation(LinearLayout.HORIZONTAL);
+                poiContainer.setPadding(20, 15, 20, 15);
+                poiContainer.setBackgroundColor(Color.parseColor("#F5F5F5"));
+                
+                // Create POI text
+                TextView poiText = new TextView(getContext());
+                poiText.setText((i + 1) + ". " + poi.name + " (Score: " + poi.score + ")");
+                poiText.setTextSize(14);
+                poiText.setTextColor(Color.BLACK);
+                poiText.setPadding(20, 0, 20, 0);
+                
+                // Create arrow button
+                TextView arrowButton = new TextView(getContext());
+                arrowButton.setText("▶");
+                arrowButton.setTextSize(16);
+                arrowButton.setTextColor(Color.parseColor("#2196F3"));
+                arrowButton.setPadding(10, 0, 10, 0);
+                arrowButton.setOnClickListener(v -> {
+                    navigateToPoiScore(poi);
+                    if (dialogRef[0] != null) dialogRef[0].dismiss();
+                });
+                
+                // Make entire container clickable
+                poiContainer.setOnClickListener(v -> {
+                    navigateToPoiScore(poi);
+                    if (dialogRef[0] != null) dialogRef[0].dismiss();
+                });
+                
+                // Add to container
+                poiContainer.addView(poiText);
+                poiContainer.addView(arrowButton);
+                
+                // Add some margin between items
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                params.setMargins(0, 10, 0, 10);
+                poiContainer.setLayoutParams(params);
+                
+                layout.addView(poiContainer);
+                android.util.Log.d("POI_VISIT_DEBUG", "POPUP Added clickable POI: " + poi.name);
             }
-            message.append("\nQuel POI voulez-vous capturer ?");
             
             builder.setTitle("🎯 Plusieurs zones de POI détectées!")
-                  .setMessage(message.toString());
+                  .setView(layout);
+        }
+             
+             builder.setTitle("🎯 Plusieurs zones de POI détectées!")
+                   .setView(layout);
+         }
             
-            // Create buttons for each POI
-            for (PoiItem poi : eligiblePois) {
-                builder.setPositiveButton(poi.name, (dialog, which) -> {
-                    navigateToPoiScore(poi);
-                    dialog.dismiss();
-                });
-            }
+            builder.setTitle("🎯 Plusieurs zones de POI détectées!")
+                  .setView(layout);
         }
         
-        builder.setNegativeButton("Plus tard", (dialog, which) -> {
+builder.setNegativeButton("Plus tard", (dialog, which) -> {
             dialog.dismiss();
         });
         
         builder.setCancelable(false); // Prevent dismissal by clicking outside
         
         AlertDialog dialog = builder.create();
+        dialogRef[0] = dialog; // Store reference for custom layout
         dialog.show();
     }
 
