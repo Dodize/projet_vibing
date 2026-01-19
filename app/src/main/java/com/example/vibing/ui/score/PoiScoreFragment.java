@@ -609,6 +609,7 @@ radioGroup.addView(radioButton);
 // Money and Score display TextViews
         TextView moneyDisplay = bonusView.findViewById(R.id.text_money_display);
         TextView scoreDisplay = bonusView.findViewById(R.id.text_score_display);
+        TextView targetScoreDisplay = bonusView.findViewById(R.id.text_target_score_display);
         
         AlertDialog dialog = builder.create();
         dialog.setCanceledOnTouchOutside(false);
@@ -623,6 +624,9 @@ radioGroup.addView(radioButton);
                 }
                 if (scoreDisplay != null) {
                     scoreDisplay.setText("Score: " + currentQuizScore[0]);
+                }
+                if (targetScoreDisplay != null) {
+                    targetScoreDisplay.setText("Score cible de la zone: " + currentZoneScore);
                 }
             }
         };
