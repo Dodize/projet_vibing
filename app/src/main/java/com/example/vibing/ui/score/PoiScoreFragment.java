@@ -485,6 +485,13 @@ public class PoiScoreFragment extends Fragment {
             // Utiliser la nouvelle méthode handleQcmResult qui calcule le score dynamique
             boolean playerWon = poiScoreViewModel.handleQcmResult(quizScore, userTeamId);
             
+            // Apply penalty if player lost
+            if (!playerWon) {
+                userMoney -= 10; // Pénalité de 10€ pour échec au quiz
+                poiScoreViewModel.setMoney(userMoney);
+                poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
+            }
+            
             // Show appropriate dialog based on result
             // Show bonus options dialog after quiz completion, which will then show quiz result dialog
             showBonusOptionsDialog(quizScore, playerWon);
