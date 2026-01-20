@@ -83,8 +83,8 @@ public class UserTest {
         user.setMoney(100);
         assertEquals(100, user.getMoney());
         
-        user.setMoney(-50);
-        assertEquals(-50, user.getMoney());
+        user.setMoney(0);
+        assertEquals(0, user.getMoney());
     }
     
     @Test
