@@ -488,7 +488,7 @@ public class PoiScoreFragment extends Fragment {
             
             // Apply penalty if player lost
             if (!playerWon) {
-                userMoney -= 10; // Pénalité de 10€ pour échec au quiz
+                userMoney = Math.max(0, userMoney - 10); // Pénalité de 10€ pour échec au quiz, plafonné à 0
                 poiScoreViewModel.setMoney(userMoney);
                 poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
             }
@@ -628,7 +628,7 @@ public class PoiScoreFragment extends Fragment {
             if (userMoney >= BonusType.FREEZE_SCORE.getCost()) {
                 if (!poiScoreViewModel.isFreezeBonusActive()) {
                     poiScoreViewModel.activateFreezeBonus();
-                    userMoney -= BonusType.FREEZE_SCORE.getCost();
+                    userMoney = Math.max(0, userMoney - BonusType.FREEZE_SCORE.getCost());
                     poiScoreViewModel.setMoney(userMoney);
                     poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                     
@@ -648,7 +648,7 @@ public class PoiScoreFragment extends Fragment {
         boostButton.setOnClickListener(v -> {
             if (userMoney >= BonusType.BOOST_SCORE.getCost()) {
                 int newScore = currentQuizScore[0] + 5;
-                userMoney -= BonusType.BOOST_SCORE.getCost();
+                userMoney = Math.max(0, userMoney - BonusType.BOOST_SCORE.getCost());
                 poiScoreViewModel.setMoney(userMoney);
                 poiScoreViewModel.saveUserMoneyToFirebase(userMoney, requireContext());
                 

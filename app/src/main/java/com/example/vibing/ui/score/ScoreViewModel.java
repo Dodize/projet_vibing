@@ -32,7 +32,7 @@ public class ScoreViewModel extends ViewModel {
     public void addMoneyBonus(int amount) {
         Integer currentMoney = mMoneyScore.getValue();
         if (currentMoney != null) {
-            mMoneyScore.setValue(currentMoney + amount);
+            mMoneyScore.setValue(Math.max(0, currentMoney + amount)); // Protection contre les valeurs négatives
         }
     }
 

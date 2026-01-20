@@ -1792,6 +1792,9 @@ private void initializeTutorial() {
     }
     
     private void saveUserMoneyToFirebase(int money) {
+        // Protection contre les valeurs négatives avant de sauvegarder
+        final int safeMoney = Math.max(0, money);
+        
         try {
             SharedPreferences prefs = requireContext().getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
             String userId = prefs.getString("user_id", null);
@@ -1799,9 +1802,9 @@ private void initializeTutorial() {
             if (userId != null) {
                 FirebaseFirestore db = FirebaseFirestore.getInstance();
                 db.collection("users").document(userId)
-                    .update("money", money)
+                    .update("money", safeMoney)
                     .addOnSuccessListener(aVoid -> {
-                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved money to Firebase: " + money);
+                        android.util.Log.d("HOME_FRAGMENT", "Successfully saved money to Firebase: " + safeMoney);
                     })
                     .addOnFailureListener(e -> {
                         android.util.Log.e("HOME_FRAGMENT", "Error saving money to Firebase", e);

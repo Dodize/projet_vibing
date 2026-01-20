@@ -1,7 +1,6 @@
 ---
 description: Commit changes
 agent: build
-model: google/gemini-2.5-flash-lite-preview-09-2025
 ---
 
 Add all changes to the commit. New files and deleted files must also be added to the commit.

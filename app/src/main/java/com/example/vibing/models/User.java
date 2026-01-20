@@ -61,7 +61,7 @@ public int getMoney() {
     }
 
     public void setMoney(int money) {
-        this.money = money;
+        this.money = Math.max(0, money); // Empêcher les valeurs négatives
     }
 
     public long getCreatedAt() {

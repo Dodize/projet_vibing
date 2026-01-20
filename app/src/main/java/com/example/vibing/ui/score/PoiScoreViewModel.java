@@ -391,13 +391,16 @@ public void addMoneyBonus(int amount, android.content.Context context) {
     }
     
     public void saveUserMoneyToFirebase(int money, android.content.Context context) {
+        // Protection contre les valeurs négatives avant de sauvegarder
+        final int safeMoney = Math.max(0, money);
+        
         try {
             SharedPreferences prefs = context.getSharedPreferences("VibingPrefs", android.content.Context.MODE_PRIVATE);
             String userId = prefs.getString("user_id", null);
             
             if (userId != null) {
                 db.collection("users").document(userId)
-                    .update("money", money);
+                    .update("money", safeMoney);
             } else {
                 android.util.Log.w("POI_SCORE", "No user ID found, cannot save money to Firebase");
             }
@@ -407,7 +410,7 @@ public void addMoneyBonus(int amount, android.content.Context context) {
     }
     
     public void setMoney(int money) {
-        mMoneyScore.setValue(money);
+        mMoneyScore.setValue(Math.max(0, money)); // Empêcher les valeurs négatives
     }
     
     public void setScore(int newScore) {
