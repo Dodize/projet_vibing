@@ -229,7 +229,7 @@ public class HomeFragment extends Fragment implements OnMarkerClickListener, Tut
                     navigateToPoiScore(poi);
                 } else {
                     String distanceInMeters = String.format("%.0f", poi.distance * 1000); // Convert km to m
-                    Toast.makeText(v.getContext(), "Vous devez être à " + distanceInMeters + "m de " + poi.name + " pour lancer le quiz", Toast.LENGTH_LONG).show();
+                    Toast.makeText(v.getContext(), "Vous êtes à " + distanceInMeters + "m de " + poi.name + ". Rapprochez vous pour lancer le quiz", Toast.LENGTH_LONG).show();
                 }
             });
         }
@@ -1044,7 +1044,7 @@ private void initializeTutorial() {
                 } else {
                     // Joueur hors zone - afficher un message et ne pas lancer le quiz
                     String distanceText = String.format("%.0f", poi.distance * 1000); // Convert km to m
-                    Toast.makeText(getContext(), "Vous devez être à " + distanceText + "m de " + poi.name + " pour lancer le quiz", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), "Vous êtes à  " + distanceText + "m de " + poi.name + ". Rapprochez vous pour lancer le quiz", Toast.LENGTH_LONG).show();
                     
                     // Feedback visuel - marker rouge temporaire
                     android.graphics.drawable.Drawable originalIcon = marker.getIcon();

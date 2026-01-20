@@ -393,10 +393,12 @@ public class PoiScoreFragment extends Fragment {
             RadioButton radioButton = new RadioButton(getContext());
             radioButton.setText(options.get(i));
             radioButton.setId(i);
-            radioGroup.addView(radioButton);
+radioGroup.addView(radioButton);
         }
 
         AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
 
         submitButton.setOnClickListener(v -> {
             int selectedId = radioGroup.getCheckedRadioButtonId();
@@ -449,10 +451,12 @@ public class PoiScoreFragment extends Fragment {
             RadioButton radioButton = new RadioButton(getContext());
             radioButton.setText(currentQuestion.getOptions().get(i));
             radioButton.setId(i);
-            radioGroup.addView(radioButton);
+radioGroup.addView(radioButton);
         }
 
         AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
 
         submitButton.setOnClickListener(v -> {
             int selectedId = radioGroup.getCheckedRadioButtonId();
@@ -602,11 +606,14 @@ public class PoiScoreFragment extends Fragment {
         Button boostButton = bonusView.findViewById(R.id.button_boost_bonus);
         Button continueButton = bonusView.findViewById(R.id.button_continue);
         
-        // Money and Score display TextViews
+// Money and Score display TextViews
         TextView moneyDisplay = bonusView.findViewById(R.id.text_money_display);
         TextView scoreDisplay = bonusView.findViewById(R.id.text_score_display);
+        TextView targetScoreDisplay = bonusView.findViewById(R.id.text_target_score_display);
         
         AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
         
         // Method to update displays
         Runnable updateDisplays = new Runnable() {
@@ -617,6 +624,9 @@ public class PoiScoreFragment extends Fragment {
                 }
                 if (scoreDisplay != null) {
                     scoreDisplay.setText("Score: " + currentQuizScore[0]);
+                }
+                if (targetScoreDisplay != null) {
+                    targetScoreDisplay.setText("Score cible de la zone: " + currentZoneScore);
                 }
             }
         };

@@ -71,12 +71,25 @@ public class PoiMigrationUtils {
     /**
      * Génère les mots-clés appropriés pour un POI en fonction de son nom
      */
-    public static List<String> generateKeywordsForPoi(Poi poi) {
-        String poiName = poi.getName().toLowerCase();
+public static List<String> generateKeywordsForPoi(Poi poi) {
+        if (poi == null) {
+            return null;
+        }
+        
+        String poiName = poi.getName();
+        if (poiName == null) {
+            poiName = "";
+        }
+        poiName = poiName.toLowerCase();
+        
         List<String> keywords = new ArrayList<>();
         
-        // Chercher une correspondance exacte ou partielle dans les mots-clés par défaut
-        for (Map.Entry<String, List<String>> entry : DEFAULT_KEYWORDS.entrySet()) {
+// Chercher une correspondance exacte ou partielle dans les mots-clés par défaut
+        // Chercher d'abord les correspondances les plus longues (plus spécifiques)
+        List<Map.Entry<String, List<String>>> sortedEntries = new ArrayList<>(DEFAULT_KEYWORDS.entrySet());
+        sortedEntries.sort((e1, e2) -> e2.getKey().length() - e1.getKey().length());
+        
+        for (Map.Entry<String, List<String>> entry : sortedEntries) {
             String key = entry.getKey();
             if (poiName.contains(key)) {
                 keywords.addAll(entry.getValue());
@@ -89,8 +102,9 @@ public class PoiMigrationUtils {
             keywords.addAll(Arrays.asList("building"));
         }
         
-        // Ajouter le nom du POI en minuscules comme mot-clé
-        keywords.add(poiName.replaceAll("[^a-z0-9\\s]", "").trim());
+// Ajouter le nom du POI en minuscules comme mot-clé
+        // Garder les caractères accentués mais supprimer les caractères spéciaux
+        keywords.add(poiName.replaceAll("[^a-z0-9\\sàâäéèêëïîôöùûüÿç]", "").trim());
         
         Log.d(TAG, "Mots-clés générés pour " + poi.getName() + ": " + keywords);
         return keywords;

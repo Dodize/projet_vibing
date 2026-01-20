@@ -271,9 +271,11 @@ public class ScoreFragment extends Fragment {
             radioButton.setText(options.get(i));
             radioButton.setId(i);
             radioGroup.addView(radioButton);
-        }
+}
 
         AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
 
         submitButton.setOnClickListener(v -> {
             int selectedId = radioGroup.getCheckedRadioButtonId();
@@ -327,9 +329,11 @@ public class ScoreFragment extends Fragment {
             radioButton.setText(currentQuestion.getOptions().get(i));
             radioButton.setId(i);
             radioGroup.addView(radioButton);
-        }
+}
 
         AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
 
         submitButton.setOnClickListener(v -> {
             int selectedId = radioGroup.getCheckedRadioButtonId();
