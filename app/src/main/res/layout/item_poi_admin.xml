@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/poi_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nom du POI"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/poi_keywords"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mots-clés"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/edit_keywords_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Modifier les mots-clés"
+        android:textSize="12sp" />
+
+</LinearLayout>

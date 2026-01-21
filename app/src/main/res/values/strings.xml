@@ -1,6 +1,37 @@
 <resources>
-    <string name="app_name">Vibing</string>
-    <string name="title_home">Home</string>
+    <string name="app_name">FarQuest</string>
+
+    
+    <string name="title_home">FarQuest</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+    <string name="title_teams">Équipes</string>
+    <string name="voice_commands_list">• \"Je dépose les armes\" - Bonus 25€\n• \"Je capture la zone\" - Quiz pour capturer la zone</string>
+    
+    <!-- Tutorial strings -->
+    <string name="tutorial_button_content_description">Tutoriel</string>
+    <string name="tutorial_close">Fermer le tutoriel</string>
+    <string name="tutorial_previous">Précédent</string>
+    <string name="tutorial_next">Suivant</string>
+    <string name="tutorial_finish">Terminer</string>
+    
+    <!-- Tutorial step titles -->
+    <string name="tutorial_step1_title">Bienvenue dans Vibing !</string>
+    <string name="tutorial_step2_title">Votre équipe et les zones</string>
+    <string name="tutorial_step3_title">Comment capturer une zone</string>
+    <string name="tutorial_step4_title">Validation et quiz</string>
+    <string name="tutorial_step5_title">L\'argent virtuel</string>
+    <string name="tutorial_step6_title">Bonne chance !</string>
+    
+    <!-- Tutorial step contents -->
+    <string name="tutorial_step1_content">Ce jeu de conquête vous met au défi de posséder les zones de la carte. Affrontez les autres équipes pour contrôler le territoire !</string>
+    <string name="tutorial_step2_content">Vous faites partie de l\'équipe %1$s.\n\nLes zones sur la carte sont représentées par des points de couleur selon l\'équipe qui les contrôle.</string>
+    <string name="tutorial_step3_content">Pour capturer une zone, déplacez-vous vers un POI (Point d\'Intérêt).\n\nDeux choix s\'offrent à vous :\n• Capturer la zone en réussissant plusieurs épreuves\n• Déposer les armes pour obtenir de l\'argent (sans capturer la zone)\n\nLe score de la zone diminue avec le temps. Vous devez le battre pour capturer !</string>
+    <string name="tutorial_step4_content">Pour capturer une zone :\n\n1. Prenez une photo du POI pour valider votre arrivée\n2. Répondez à un quiz\n3. Obtenez suffisamment de points pour capturer la zone</string>
+    <string name="tutorial_step5_content">L\'argent virtuel s\'obtient en marchant :\n\n20 pas = 1€\n\nUtilisez cet argent pour acheter des bonus qui vous aideront dans les quiz.</string>
+    <string name="tutorial_step6_content">Vous êtes maintenant prêt à jouer !\n\nBonne chance et que le meilleur gagne ! Combattez aux côtés de votre équipe pour la victoire !</string>
+    
+    <!-- Quiz Result Dialog strings -->
+    <string name="quiz_result_icon_description">Icône de résultat de quiz</string>
+    <string name="warning_icon_description">Icône d\'avertissement</string>
 </resources>

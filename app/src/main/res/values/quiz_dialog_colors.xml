@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="transparent_overlay">#00000000</color>
+    <color name="warning_background">#FFF3E0</color>
+    <color name="warning_border">#FFB74D</color>
+</resources>
